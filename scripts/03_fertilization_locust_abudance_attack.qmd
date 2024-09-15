@@ -1,0 +1,359 @@
+
+## Question 2: Does fertilization influence *O. senegalensis* abundance and attack
+
+This data is a time series with three sample points (mission 1-3) and 200-ish farmers all gps referenced. Temperature and humidity are recorded as well. All these are variables that we want to control and are not necessarily concerned about.
+
+## Library import and reading in data
+
+```{r reading in packages, warning=FALSE,message=FALSE}
+
+
+# Define a function to check and install packages if not already installed
+install_and_load <- function(packages) {
+  for (pkg in packages) {
+    if (!require(pkg, character.only = TRUE)) {
+      install.packages(pkg, dependencies = TRUE)
+      library(pkg, character.only = TRUE)
+    }
+  }
+}
+
+
+
+# List of packages to install and load
+packages <- c("tidyverse", "here", "janitor",  
+              "ggpubr", "MetBrewer", "patchwork",'sf',
+              'rnaturalearth','rnaturalearthdata','mgcv','gratia','emmeans')
+
+# Call the function with your package list
+install_and_load(packages)
+
+
+options(width=200)
+here::i_am('README.md')
+
+```
+
+
+## Raw data visualization
+
+Lets also get a time of day measure as this can affect locust abundances greatly.
+
+
+```{r}
+
+dat <- dat |>
+  mutate(hour = lubridate::hour(datetime))
+names(dat)
+```
+
+```{r OSE exploratory model}
+
+# Basic plots
+# List of plots with their respective file paths
+plot_list <- list(
+  raw_ose_count_treatment = dat |>
+    ggplot(aes(x = treatment, y = ose_num)) +
+    geom_jitter(width = 0.2) +
+    theme_pubr(),
+  
+  raw_ose_count_humidity_percent = dat |>
+    ggplot(aes(x = humidity_percent, y = ose_num)) +
+    geom_jitter(width = 0.2) +
+    theme_pubr(),
+  
+  raw_ose_count_ground_cover_percent = dat |>
+    ggplot(aes(x = ground_cover_percent, y = ose_num)) +
+    geom_jitter(width = 0.2) +
+    theme_pubr(),
+  
+  raw_ose_count_hour = dat |>
+    ggplot(aes(x = hour, y = ose_num)) +
+    geom_jitter(width = 0.2) +
+    theme_pubr(),
+  
+  raw_millet_attack_treatment = dat |>
+    ggplot(aes(x = treatment, y = att_mil)) +
+    geom_jitter(width = 0.2) +
+    theme_pubr(),
+  
+  raw_millet_attack_humidity_percent = dat |>
+    ggplot(aes(x = humidity_percent, y = att_mil)) +
+    geom_point() +
+    theme_pubr(),
+  
+  raw_millet_attack_ground_cover_percent = dat |>
+    ggplot(aes(x = ground_cover_percent, y = att_mil)) +
+    geom_point() +
+    theme_pubr(),
+  
+  raw_millet_attack_hour = dat |>
+    ggplot(aes(x = hour, y = att_mil)) +
+    geom_point() +
+    theme_pubr()
+)
+
+# File paths
+file_paths <- list(
+  raw_ose_count_treatment = 'output/ose_treatment_plots/raw_ose_count_treatment.png',
+  raw_ose_count_humidity_percent = 'output/ose_treatment_plots/raw_ose_count_humidity_percent.png',
+  raw_ose_count_ground_cover_percent = 'output/ose_treatment_plots/raw_ose_count_ground_cover_percent.png',
+  raw_ose_count_hour = 'output/ose_treatment_plots/raw_ose_count_hour.png',
+  raw_millet_attack_treatment = 'output/ose_treatment_plots/raw_millet_attack_treatment.png',
+  raw_millet_attack_humidity_percent = 'output/ose_treatment_plots/raw_millet_attack_humidity_percent.png',
+  raw_millet_attack_ground_cover_percent = 'output/ose_treatment_plots/raw_millet_attack_ground_cover_percent.png',
+  raw_millet_attack_hour = 'output/ose_treatment_plots/raw_millet_attack_hour.png'
+)
+
+# Save plots using a loop
+for (plot_name in names(plot_list)) {
+  ggsave(
+    plot_list[[plot_name]],
+    file = file_paths[[plot_name]],
+    width = 5, height = 5, dpi = 300
+  )
+}
+
+```
+
+So the pattern isnt as strong as yield, but I think there is still something there. Lets break it down by village, farmer, and mission.
+
+```{r breaking plots down by village farmer and mission for locust abundance}
+
+# Broken out into village and farmer
+
+ose_number_village_treatment <- dat |>
+  ggplot(aes(x=treatment,y=ose_num,color=village)) +
+    geom_jitter(width=0.2) +
+    scale_color_met_d(name='Demuth') +
+    theme_pubr()
+
+
+ose_number_village_mission <- dat |>
+  ggplot(aes(x=treatment,y=ose_num,color=village,group=farmer_num)) +
+    geom_line(alpha=0.5) +
+    geom_point(size=2) +
+    scale_color_met_d(name='Demuth') +
+    theme_pubr() +
+    facet_wrap(~mission,ncol=2)
+
+# What about across mission?
+
+ose_number_treatment_village_mission <- dat |>
+  ggplot(aes(x=mission,y=ose_num,color=village,group=farmer_num)) +
+    geom_line(alpha=0.5) +
+    geom_point(size=2) +
+    scale_color_met_d(name='Demuth') +
+    theme_pubr() +
+    facet_wrap(~treatment)
+
+
+
+ggsave(ose_number_village_treatment,
+       file='output/ose_treatment_plots/ose_number_village_treatment.png',
+       width=5,height=5,dpi=300)
+
+ggsave(ose_number_village_mission,
+       file='output/ose_treatment_plots/ose_number_village_mission.png',
+       width=10,height=10,dpi=300)
+
+ggsave(ose_number_treatment_village_mission,
+       file='output/ose_treatment_plots/ose_number_treatment_village_mission.png',
+       width=10,height=5,dpi=300)
+
+
+ose_number_village_treatment
+ose_number_village_mission
+ose_number_treatment_village_mission
+
+```
+
+lets make models regressing locust abundance on treatment.
+
+```{r modeling locust abundance}
+
+m1_exclude <- dat |>
+  filter(mission != 'm1')
+
+
+ose_num_mod0 <- gam(ose_num ~ 1,
+            data=m1_exclude,family = tw()) # null model
+
+ose_num_mod1 <- gam(ose_num ~ treatment,
+            data=m1_exclude,family = tw()) # basic ANOVA
+
+ose_num_mod2 <- gam(ose_num ~ treatment + 
+              s(mission,bs='re') +
+              s(village,bs='re'),
+            data=m1_exclude,family = tw())
+
+ose_num_mod3 <- gam(ose_num ~ treatment +
+              s(mission,bs='re') +
+              s(farmer_num,bs='re'),
+            data=m1_exclude,family = tw())
+
+ose_num_mod4 <- gam(ose_num ~ treatment + 
+              mission +
+              s(village,bs='re') + 
+              s(farmer_num,bs='re'),
+            data=m1_exclude,family = tw())
+
+AIC(ose_num_mod0,ose_num_mod1,ose_num_mod2,ose_num_mod3,ose_num_mod4)
+
+summary(ose_num_mod4)
+```
+
+Now lets do the same thing for millet attack:
+
+```{r breaking plots down by village farmer and mission for locust abundance}
+
+# Broken out into village and farmer
+
+dat |>
+  ggplot(aes(x=treatment,y=att_mil,color=village)) +
+    geom_jitter(width=0.2) +
+    scale_color_met_d(name='Demuth') +
+    theme_pubr()
+
+
+dat |>
+  ggplot(aes(x=treatment,y=att_mil,color=village,group=farmer_num)) +
+    geom_line(alpha=0.5) +
+    geom_point(size=2) +
+    scale_color_met_d(name='Demuth') +
+    theme_pubr() +
+    facet_wrap(~mission,ncol=2)
+
+# What about across mission?
+
+dat |>
+  ggplot(aes(x=mission,y=att_mil,color=village,group=farmer_num)) +
+    geom_line(alpha=0.5) +
+    geom_point(size=2) +
+    scale_color_met_d(name='Demuth') +
+    theme_pubr() +
+    facet_wrap(~treatment)
+
+
+# Okay what about yield
+
+dat |>
+  ggplot(aes(x=mission,y=att_mil,color=village,group=farmer_num)) +
+    geom_line(alpha=0.5) +
+    geom_point(size=2) +
+    scale_color_met_d(name='Demuth') +
+    theme_pubr() +
+    facet_wrap(~treatment)
+
+```
+
+```{r millet attack}
+
+
+att_mil_mod0 <- gam(att_mil ~ 1,
+            data=dat,family = tw()) # null model
+
+att_mil_mod1 <- gam(att_mil ~ treatment,
+            data=dat,family = tw()) # basic ANOVA
+
+att_mil_mod2 <- gam(att_mil ~ treatment + 
+              s(mission,bs='re') +
+              s(village,bs='re'),
+            data=dat,family = tw())
+
+att_mil_mod3 <- gam(att_mil ~ treatment +
+              s(mission,bs='re') +
+              s(farmer_num,bs='re'),
+            data=dat,family = tw())
+
+att_mil_mod4 <- gam(att_mil ~ treatment + 
+              s(mission,bs='re') +
+              s(village,bs='re') + 
+              s(farmer_num,bs='re'),
+            data=dat,family = tw())
+
+AIC(att_mil_mod0,att_mil_mod1,att_mil_mod2,att_mil_mod3,att_mil_mod4)
+summary(att_mil_mod4)
+appraise(att_mil_mod1)
+```
+
+There are some issues with the model diagnostics, but not too bad. Lets summarize this all up:
+
+```{r abundance and millet attack final plots}
+
+ose_abundance_modeled <- emmeans(ose_num_mod4,'treatment',type='response') |>
+  as_tibble() |>
+  ggplot(aes(x=treatment,y=response)) +
+    geom_point(size=5) +
+    geom_errorbar(aes(ymin = lower.CL,ymax = upper.CL),width=0) +
+    theme_pubr() +
+    ylab("locust abundance") 
+
+ose_millet_attack_modeled <- emmeans(att_mil_mod4,'treatment',type='response') |>
+  as_tibble() |>
+  ggplot(aes(x=treatment,y=response)) +
+    geom_point(size=5) +
+    geom_errorbar(aes(ymin = lower.CL,ymax = upper.CL),width=0)  +
+    theme_pubr()  +
+    ylab("locust damage") 
+
+ose_abundance_modeled
+ose_millet_attack_modeled
+
+ggsave(ose_abundance_modeled,
+       file='output/ose_treatment_plots/ose_abundance_modeled.png',
+       width=5,height=5,dpi=300)
+
+ggsave(ose_abundance_modeled,
+       file='output/ose_treatment_plots/ose_abundance_modeled.png',
+       width=5,height=5,dpi=300)
+
+```
+
+and the model summaries:
+
+```{r model summaries}
+
+summary(ose_num_mod4)
+
+summary(att_mil_mod4)
+```
+
+
+
+
+
+```{r}
+dat
+
+
+mod <- gam(ose_num ~ treatment + 
+              s(hour) +
+              s(temp_c) +
+              s(humidity_percent) +
+              s(mission,bs='re') +
+              s(village,bs='re'),
+            data=dat,family = tw())
+
+mod2 <- gam(ose_num ~ treatment + 
+              s(mission,bs='re') +
+              s(village,bs='re'),
+            data=dat,family = tw())
+
+mod <- gam(att_mil ~ treatment + 
+              s(hour) +
+              s(temp_c) +
+              s(humidity_percent) +
+              s(mission,bs='re') +
+              s(village,bs='re'),
+            data=dat,family = tw())
+
+mod2 <- gam(att_mil ~ treatment + 
+              s(mission,bs='re') +
+              s(village,bs='re'),
+            data=dat,family = tw())
+      
+
+summary(mod1)
+gratia::appraise(mod)
+```

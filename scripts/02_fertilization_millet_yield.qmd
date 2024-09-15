@@ -1,0 +1,208 @@
+
+# Question 1: How does fertilization influence millet yield
+
+This data is a time series with three sample points (mission 1-3) and 200-ish farmers all gps referenced. Temperature and humidity are recorded as well. All these are variables that we want to control and are not necessarily concerned about.
+
+## Library import and reading in data
+
+```{r reading in packages, warning=FALSE,message=FALSE}
+
+
+# Define a function to check and install packages if not already installed
+install_and_load <- function(packages) {
+  for (pkg in packages) {
+    if (!require(pkg, character.only = TRUE)) {
+      install.packages(pkg, dependencies = TRUE)
+      library(pkg, character.only = TRUE)
+    }
+  }
+}
+
+
+
+# List of packages to install and load
+packages <- c("tidyverse", "here", "janitor",  
+              "ggpubr", "MetBrewer", "patchwork",'sf',
+              'rnaturalearth','rnaturalearthdata','mgcv','gratia','emmeans')
+
+# Call the function with your package list
+install_and_load(packages)
+
+
+options(width=200)
+here::i_am('README.md')
+
+```
+
+This should be self explanatory, but lets see what the data looks like.
+
+```{r exploratory plots}
+
+raw_yield_farmer_plot <- dat |>
+  ggplot(aes(x=treatment,y=yield,group=farmer_num)) +
+    geom_line(alpha=0.5) +
+    geom_point(size=2) +
+    theme_pubr() +
+    ylab("Yield") +
+    xlab("") +
+    facet_wrap(~village)
+
+raw_yield_plot <- dat |>
+  ggplot(aes(x=treatment,y=yield)) +
+    geom_jitter(width=0.2,height=0) +
+    theme_pubr() +
+    ylab("Yield") +
+    xlab("") 
+
+raw_yield_boxplot_plot <- dat |>
+  ggplot(aes(x=treatment,y=yield)) +
+    geom_boxplot(outlier.size = -1) +
+    geom_jitter(width=0.2,height=0,pch=21,color='black') +
+    theme_pubr() +
+    ylab("Yield") +
+    xlab("") 
+
+
+ggsave(raw_yield_farmer_plot,
+       file='output/raw_yield_plots/raw_yield_farmer_plot.png',
+       width=10,height=5,dpi=300)
+
+ggsave(raw_yield_plot,
+       file='output/raw_yield_plots/raw_yield_plot.png',
+       width=5,height=5,dpi=300)
+
+ggsave(raw_yield_boxplot_plot,
+       file='output/raw_yield_plots/raw_yield_boxplot_plot.png',
+       width=5,height=5,dpi=300)
+
+
+raw_yield_farmer_plot
+raw_yield_plot
+raw_yield_boxplot_plot
+```
+
+So pretty obvious, fertilizer influences yield. It doesn't appear to be extreme differences between village (with the exception of some farmers). Some farmers had considerably more yield increase than others which could be contributed to many variables (rainfall, soils, land management etc.)
+
+
+Lets build a statistical model with village and farmer as random effects and look directly at the impact of fertilization on yield. Again, there will be no surprise here. I'll do some model selection just to see variable importance (just for kicks)
+
+```{r yield modeling}
+
+yield_mod_dat <- dat |>
+  select(yield,treatment,village,farmer_num,village) |>
+  distinct() |> drop_na(yield)
+  
+  
+mod0 <- gam(yield ~ 1,
+            data=yield_mod_dat,family = tw()) # null model
+
+mod1 <- gam(yield ~ treatment,
+            data=yield_mod_dat,family = tw()) # basic ANOVA
+
+mod2 <- gam(yield ~ treatment + 
+              s(village,bs='re'),
+            data=yield_mod_dat,family = tw())
+
+mod3 <- gam(yield ~ treatment +
+              s(farmer_num,bs='re'),
+            data=yield_mod_dat,family = tw())
+
+mod4 <- gam(yield ~ treatment + 
+              s(village,bs='re') + 
+              s(farmer_num,bs='re'),
+            data=yield_mod_dat,family = tw())
+
+```
+
+Alright, lets check the models for fit and select via AIC:
+
+```{r model checking}
+
+gratia::draw(mod3,parametric = TRUE)
+
+AIC(mod0,mod1,mod2,mod3,mod4) |>
+  rownames_to_column('model') |>
+  as_tibble() |>
+  mutate(deltaAIC = AIC - min(AIC)) |>
+  arrange(deltaAIC)
+```
+
+okay interesting! Village did not a lot of variance in yield, but farmer ID did. This should make sense for our exploratory plots as there is considerable differences between the paired plot shifts between farmer.
+
+With this said, the effect on treatment overall was small if you compare the parametric estimate between `mod1` (0.81) and `mod3` (0.88):
+
+```{r yield mod1 and mod3 summary}
+
+summary(mod1)
+summary(mod3)
+
+```
+
+Lets visually plot the final estimated marginal means:\
+
+```{r emm plotting}
+
+mod1_emm <- emmeans(mod1,'treatment',type='response') |>
+  as_tibble() |>
+  mutate(model = 'ANOVA')
+
+mod3_emm <- emmeans(mod3,'treatment',type='response') |>
+  as_tibble() |>
+  mutate(model = 'GLMM')
+
+emms <- rbind(mod1_emm,mod3_emm)
+
+yield_anova_glmms_estimated_marginal_means_comparisons <- emms |>
+  ggplot(aes(x=treatment,y=response,color=model)) +
+    geom_point(size=5,position = position_dodge(width=0.4)) +
+    geom_errorbar(aes(ymin=lower.CL,ymax=upper.CL),
+                  width=0,position = position_dodge(width=0.4)) +
+    theme_pubr() +
+    ylab("Yield") +
+    xlab("") +
+    scale_color_met_d(name='Degas')
+
+yield_anova_glmms_estimated_marginal_means_comparisons
+
+ggsave(yield_anova_glmms_estimated_marginal_means_comparisons,
+       file='output/modeled_yield_plots/yield_anova_glmms_estimated_marginal_means_comparisons.png',
+       width=5,height=5,dpi=300)
+```
+
+So the final plot looks like this:
+
+```{r final yield model plot}
+
+final_yield_model_est_marginal_means <- emms |>
+  filter(model == 'GLMM') |>
+  ggplot(aes(x=treatment,y=response)) +
+    geom_point(size=5,position = position_dodge(width=0.4)) +
+    geom_errorbar(aes(ymin=lower.CL,ymax=upper.CL),
+                  width=0,position = position_dodge(width=0.4)) +
+    theme_pubr() +
+    ylab("Yield") +
+    xlab("") +
+    scale_color_met_d(name='Degas')
+
+
+farmer_yield_variance <- smooth_estimates(mod3) |>
+  ggplot(aes(x=reorder(farmer_num,-est),y=est)) +
+    geom_point() +
+    geom_errorbar(aes(ymin=est-se,ymax=est+se),width=0) +
+    coord_flip() +
+    xlab("Farmer Number") +
+    ylab("yield estimate") +
+    theme_pubr()
+
+ggsave(final_yield_model_est_marginal_means,
+       file='output/modeled_yield_plots/final_yield_model_est_marginal_means.png',
+       width=5,height=5,dpi=300)
+
+ggsave(farmer_yield_variance,
+       file='output/modeled_yield_plots/farmer_yield_variance.png',
+       width=5,height=12,dpi=300)
+
+final_yield_model_est_marginal_means
+farmer_yield_variance
+
+```

@@ -1,0 +1,208 @@
+---
+title: "data_mangement"
+author: "Douglas Lawton"
+format: html
+editor: source
+---
+
+# Script purpose
+
+I am going to manage the data into a useable format for analyses. This script will take an excel sheet and produce a csv in the correct format for further visualization and modeling
+
+```{r reading in libraries,warning=FALSE,message=FALSE}
+
+# Define a function to check and install packages if not already installed
+install_and_load <- function(packages) {
+  for (pkg in packages) {
+    if (!require(pkg, character.only = TRUE)) {
+      install.packages(pkg, dependencies = TRUE)
+      library(pkg, character.only = TRUE)
+    }
+  }
+}
+
+# List of packages to install and load
+packages <- c("tidyverse", "here", "janitor", "readxl", "measurements", 
+              "ggpubr", "sf", "rnaturalearth", "rnaturalearthdata")
+
+# Call the function with your package list
+install_and_load(packages)
+
+options(width=200)
+here::i_am('README.md')
+```
+
+
+lets read in the data, get the coordinates into a usable format:
+
+```{r read in data and coordinate formatting}
+
+
+
+dat <- read_xlsx(here('data/alldata_v17.xlsx'),sheet = 1,.name_repair = 'minimal') |>
+  select(1:32) |>
+  clean_names() |>
+  mutate(latitude = str_extract(gps,pattern = 'N\\d+°\\d+\\.\\d+’'),
+         longitude = str_extract(gps,pattern = 'W\\d+°\\d+\\.\\d+’'))
+
+dat2 <- dat |>
+  mutate(lat_degree = str_extract(latitude,'(?<=N)\\d{2}'),
+         lat_minute = str_extract(latitude,'(?<=N\\d{2}°)\\d{2}'),
+         lat_second = str_extract(latitude,'\\.(\\d+)'),
+         long_degree = str_extract(longitude,'(?<=W)\\d{2}'),
+         long_minute = str_extract(longitude,'(?<=W\\d{2}°)\\d{2}'),
+         long_second = str_extract(longitude,'\\.(\\d+)'),
+         across(starts_with(c('lat_', 'long_')), as.numeric))
+
+
+# Function to convert degrees, minutes, and seconds to decimal degrees
+convert_to_decimal <- function(degrees, minutes, seconds) {
+  decimal_degrees <- degrees + minutes / 60 + seconds / 3600
+  return(decimal_degrees)
+}
+
+
+dat3 <- dat2 |>
+  mutate(latitude = convert_to_decimal(as.numeric(lat_degree),
+                                       as.numeric(lat_minute),
+                                       as.numeric(lat_second)),
+         longitude = convert_to_decimal(as.numeric(long_degree),
+                                       as.numeric(long_minute),
+                                       as.numeric(long_second)) * -1) |>
+  select(!c(starts_with(c('lat_','long_')),gps))
+
+
+```
+
+
+Okay now that I figured out the coordinates issues, lets get this into a long format. so that each mission is given a row. also lets get the time into a good format as well
+
+I just learned that the abundances are relative to all grasshoppers caught so the OSE numbers will need to be adjusted:
+
+- Gniby = 90% OSE
+- Gossas = 85% OSE
+
+
+
+
+```{r pivoting and time management}
+
+# Using pivot_longer
+dat4 <- dat3 %>%
+  pivot_longer(cols = starts_with(c('m1_', 'm2_', 'm3_')), 
+               names_to = c('mission','.value'), 
+               names_pattern = '^(m\\d+)_(.*)')
+
+dat5 <- dat4 |>
+  mutate(hour = gsub(' mn','mn',hour)) |>
+  mutate(datetime = as.POSIXct(paste(date_surveyed, hour), format = "%Y-%m-%d %Hh %Mmn"),
+         mission = factor(mission),
+         farmer_num = factor(farmer_num),
+         village = factor(village)) |>
+  select(!c(date_surveyed,hour)) |>
+  select(farmer_num,village,treatment,yield,latitude:att_mil,datetime) |>
+  mutate(ose_num = case_when(village == 'Gossas' ~ ose_num*0.85,village == 'Gniby' ~ ose_num*0.9,TRUE~ose_num))
+
+```
+
+Lets write the dataframe out to disk:
+
+```{r writing final csv}
+
+write.csv(dat5,'data/analysis_ready_data.csv')
+
+```
+
+
+
+Here are some quick plots making sure everything looks good:
+
+
+```{r quick viz}
+
+dat5 |>
+  ggplot(aes(x=treatment,y=ose_num)) +
+    geom_jitter(width=0.2,height=0) +
+    theme_pubr()
+
+dat5 |>
+  ggplot(aes(x=treatment,y=att_mil)) +
+    geom_jitter(width=0.2,height=0) +
+    theme_pubr()
+
+dat5 |>
+  ggplot(aes(x=treatment,y=yield)) +
+    geom_jitter(width=0.2,height=0) +
+    theme_pubr()
+
+dat5 |>
+  ggplot(aes(x=ose_num,y=att_mil)) +
+    geom_point() +
+    geom_smooth(method='lm') +
+    theme_pubr()
+
+dat5 |>
+  ggplot(aes(y=ose_num,x=temp_c)) +
+    geom_point() +
+    theme_pubr()
+
+dat5 |>
+  ggplot(aes(y=ose_num,x=humidity_percent)) +
+    geom_point() +
+    theme_pubr()
+
+dat5 |>
+  ggplot(aes(y=ose_num,x=ground_cover_percent)) +
+    geom_point() +
+    theme_pubr()
+
+dat5 |>
+  ggplot(aes(y=ose_num,x=mission,color=village)) +
+    geom_jitter(width=0.3,height=0) +
+    MetBrewer::scale_color_met_d(name = 'Degas') +
+    theme_pubr()
+
+dat5 |>
+  ggplot(aes(y=att_mil,x=mission,color=village)) +
+    geom_jitter(width=0.3,height=0)  +
+    MetBrewer::scale_color_met_d(name = 'Degas') +
+    theme_pubr()
+
+# What about spatial?
+
+africa <- ne_countries(scale = "medium", continent = "Africa", returnclass = "sf") |>
+  filter(name_en == 'Senegal')
+
+coordinates <- st_as_sf((dat5 %>% drop_na(longitude, latitude)), coords = c("longitude", "latitude"), crs = 4326)
+
+ggplot() +
+  geom_sf(data = africa) +
+  geom_sf(data = coordinates,aes(color=ose_num)) +
+  theme_void() +
+  facet_wrap(~mission,ncol = 2) +
+  scale_color_viridis_c(trans = 'sqrt')
+
+ggplot() +
+  geom_sf(data = africa) +
+  geom_sf(data = coordinates,aes(color=att_mil)) +
+  theme_void() +
+  facet_wrap(~mission,ncol = 2) +
+  scale_color_viridis_c(trans = 'sqrt')
+
+```
+
+
+
+Alright, I think i've seen enough to make some initial statements.
+
+1) It is clear to the most important factor on yield is fertilization, which is a no brainer.
+
+2) I dont think this data supports the idea that locust abundance or attack is directly related to yield. This actually rings pretty true for a lot of insect pests (just thinking about corn earworm)
+
+3) there is a loose positive correlation between locust abundance and millet attack, suggesting something else is at play here (perhaps nutrient content?)
+
+4) Field fertilization does seem to reduce the abunance and millet attack of locusts. 
+
+5) Theres not a strong difference between village
+
+6) mission 1 definitely had more locusts than mission 2 and 3 which had roughly the same number of locusts and attacks

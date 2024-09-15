@@ -1,0 +1,98 @@
+
+## Question 3: Does *O. senegalensis* abundance and attack influence yield across treatment
+
+Okay so this is a tricky question to ask due to the co-correlation between treatment, yield, and locust abundance. Fertilization obviously influences both yield and locust abundance/attack. So how do we model the effect locusts have on yield *independently*?
+
+lets demonstrate this co-correlation
+
+```{r co-correlation between treatment, yield, and locust abundance/attack}
+
+# lcoust abundance/attack and yield correlation
+
+raw_ose_count_yield_correlation <- dat |>
+  ggplot(aes(x=ose_num,y=yield)) +
+    geom_point() +
+    theme_pubr() +
+    xlab("locust count")
+
+raw_ose_damage_yield_correlation <- dat |>
+  ggplot(aes(x=att_mil,y=yield)) +
+    geom_point() +
+    theme_pubr() +
+    xlab('locust damage')
+
+
+# locust abundance and attack correlation
+
+ose_count_damage_correlation <- dat |>
+  ggplot(aes(x=ose_num,y=att_mil,color=treatment)) +
+    geom_point() +
+    theme_pubr() +
+    scale_color_met_d(name='Degas')  +
+    xlab("locust count")  +
+    ylab("locust damage")
+
+
+
+# yield, abudance and attack with treatment:
+
+p1 <- dat |>
+  ggplot(aes(x=treatment,y=yield,color=village)) +
+    geom_jitter(width=0.3,height=0) +
+    theme_pubr() +
+    xlab("") +
+    ylab("yield") +
+    scale_color_met_d(name='Demuth')
+
+p2 <- dat |>
+  ggplot(aes(x=treatment,y=ose_num,color=village)) +
+    geom_jitter(width=0.3,height=0)  +
+    theme_pubr() +
+    xlab("") +
+    ylab("locust count") +
+    scale_color_met_d(name='Demuth')
+
+p3 <- dat |>
+  ggplot(aes(x=treatment,y=att_mil,color=village)) +
+    geom_jitter(width=0.3,height=0)  +
+    theme_pubr()  +
+    xlab("") +
+    ylab("locust damage") +
+    scale_color_met_d(name='Demuth')
+
+
+(p1 + p2) / (p3 + plot_spacer())
+
+
+
+ggsave(raw_ose_count_yield_correlation,
+       file='output/locust_yield_plots/raw_ose_count_yield_correlation.png',
+       width=5,height=5,dpi=300)
+
+ggsave(ose_count_damage_correlation,
+       file='output/locust_yield_plots/ose_count_damage_correlation.png',
+       width=5,height=5,dpi=300)
+
+
+```
+
+okay I'm not totally confident to have a model where yield, treatment, and locust abundance/attack are all included. I think theres a lot of co-correlations. So, lets just focus on locust abundance/attack and yield directly. Here is the starting of my modeling but I didnt go further....
+
+```{r locust abundance/attack and yield modeling}
+
+yield_locust_dat
+
+yield_locust_mod0 <- gam(yield ~ 1,data=dat,family=tw())
+
+yield_locust_mod1 <- gam(yield ~ ose_num,data=dat,family=tw())
+
+yield_locust_mod2 <- gam(yield ~ ose_num +
+                             s(mission,bs='re'),
+                         data=dat,family=tw())
+
+
+
+summary(yield_locust_mod1)
+appraise(yield_locust_mod2)
+summary(yield_locust_mod2)
+```
