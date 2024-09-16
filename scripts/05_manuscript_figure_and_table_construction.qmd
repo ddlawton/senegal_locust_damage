@@ -1,0 +1,83 @@
+---
+title: "Manuscript figure and table construction"
+author: "Douglas Lawton"
+format: html
+editor: source
+---
+
+```{r reading in packages, warning=FALSE,message=FALSE}
+
+
+# Define a function to check and install packages if not already installed
+install_and_load <- function(packages) {
+  for (pkg in packages) {
+    if (!require(pkg, character.only = TRUE)) {
+      install.packages(pkg, dependencies = TRUE)
+      library(pkg, character.only = TRUE)
+    }
+  }
+}
+
+
+
+# List of packages to install and load
+packages <- c("tidyverse", "here", "janitor",  
+              "ggpubr", "MetBrewer", "patchwork",'sf',
+              'rnaturalearth','rnaturalearthdata','mgcv','gratia','emmeans')
+
+# Call the function with your package list
+install_and_load(packages)
+
+
+options(width=200)
+here::i_am('README.md')
+```
+
+
+# Read in data
+
+
+```{r}
+
+abun_mil_attack <- read_csv(here('data/processed/locust_abundance_and_att_mil_raw_and_model_data.csv'))
+yield <- read_csv(here('data/processed/yield_raw_and_model_data.csv'))
+
+```
+
+
+# yield, attack, and abundance panel
+ - panel a = raw locust count through survey
+ - panel b = modeled locust count through survey
+ - panel c = raw locust damage through survey
+ - panel d = modeled locust damage through survey
+ - panel e = raw yield between treatment
+ - panel f = modeled yield between treatment
+
+
+ ```{r}
+
+p1 <- abun_mil_attack |>
+    select(village,treatment,ose_num,mission) |>
+    mutate(treatment = factor(case_when(mission == 'm1' ~ 'PT', TRUE ~ treatment),levels=c('PT','control','fertilized')),
+        mission = case_when(mission == 'm1' ~ 'PT',mission == 'm2' ~ 'S1',mission == 'm3' ~ 'S3')) |>
+    ggplot(aes(x=mission,y=ose_num,color=treatment)) +
+        geom_point(position = position_jitterdodge(jitter.height=0,jitter.width=0.25)) +
+    scale_color_manual(values = c('dark grey','black','dark green')) +
+    theme_pubr()  + 
+    theme(legend.position="none") +
+    xlab('') +
+    ylab('Locust Count')
+
+p2 <- abun_mil_attack |>
+    select(village,treatment,starts_with('abundance_')) |>
+    distinct() >
+    filter()
+    ggplot(aes(x=treatment,y=abundance_response,color=treatment)) +
+        geom_point(position = position_jitterdodge(jitter.height=0,jitter.width=0.25)) +
+    scale_color_manual(values = c('dark grey','black','dark green')) +
+    theme_pubr()  + 
+    theme(legend.position="none") +
+    xlab('') +
+    ylab('Locust Count')
+
+ ```

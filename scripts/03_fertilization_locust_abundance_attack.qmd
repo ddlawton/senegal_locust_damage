@@ -1,3 +1,10 @@
+---
+title: "locust abundance and attack"
+author: "Douglas Lawton"
+format: html
+editor: source
+---
+
 
 ## Question 2: Does fertilization influence *O. senegalensis* abundance and attack
 
@@ -42,9 +49,9 @@ Lets also get a time of day measure as this can affect locust abundances greatly
 
 ```{r}
 
-dat <- dat |>
+dat <- read_csv('data/analysis_ready_data.csv') |>
   mutate(hour = lubridate::hour(datetime))
-names(dat)
+
 ```
 
 ```{r OSE exploratory model}
@@ -172,6 +179,10 @@ lets make models regressing locust abundance on treatment.
 
 ```{r modeling locust abundance}
 
+dat <- dat |>
+  mutate(across(where(is.character),~as.factor(.)))
+
+
 m1_exclude <- dat |>
   filter(mission != 'm1')
 
@@ -281,7 +292,11 @@ There are some issues with the model diagnostics, but not too bad. Lets summariz
 
 ```{r abundance and millet attack final plots}
 
-ose_abundance_modeled <- emmeans(ose_num_mod4,'treatment',type='response') |>
+ose_num_emms <- emmeans(ose_num_mod4,'treatment',type='response') |> as_tibble()
+
+att_mil_emms <- emmeans(att_mil_mod4,'treatment',type='response') |> as_tibble()
+
+ose_abundance_modeled <- emms |>
   as_tibble() |>
   ggplot(aes(x=treatment,y=response)) +
     geom_point(size=5) +
@@ -289,7 +304,7 @@ ose_abundance_modeled <- emmeans(ose_num_mod4,'treatment',type='response') |>
     theme_pubr() +
     ylab("locust abundance") 
 
-ose_millet_attack_modeled <- emmeans(att_mil_mod4,'treatment',type='response') |>
+ose_millet_attack_modeled <- emms |>
   as_tibble() |>
   ggplot(aes(x=treatment,y=response)) +
     geom_point(size=5) +
@@ -320,40 +335,20 @@ summary(att_mil_mod4)
 ```
 
 
-
+## Saving to disk for figure and table construction:
 
 
 ```{r}
-dat
+
+locust_dat <- dat |>
+  select(farmer_num,village,treatment,ose_num,att_mil) |>
+  left_join(ose_num_emms,by='treatment') |>
+  rename(abundance_response = response,abundance_se = SE,abundance_df = df, abundance_lower.CL = lower.CL, abundance_upper.CL = upper.CL) |>
+  left_join(att_mil_emms,by='treatment') |>
+  rename(att_mil_response = response,att_mil_se = SE,att_mil_df = df, att_mil_lower.CL = lower.CL, att_mil_upper.CL = upper.CL)
 
 
-mod <- gam(ose_num ~ treatment + 
-              s(hour) +
-              s(temp_c) +
-              s(humidity_percent) +
-              s(mission,bs='re') +
-              s(village,bs='re'),
-            data=dat,family = tw())
+write.csv(locust_dat,file=here('data/processed/locust_abundance_and_att_mil_raw_and_model_data.csv'))
 
-mod2 <- gam(ose_num ~ treatment + 
-              s(mission,bs='re') +
-              s(village,bs='re'),
-            data=dat,family = tw())
 
-mod <- gam(att_mil ~ treatment + 
-              s(hour) +
-              s(temp_c) +
-              s(humidity_percent) +
-              s(mission,bs='re') +
-              s(village,bs='re'),
-            data=dat,family = tw())
-
-mod2 <- gam(att_mil ~ treatment + 
-              s(mission,bs='re') +
-              s(village,bs='re'),
-            data=dat,family = tw())
-      
-
-summary(mod1)
-gratia::appraise(mod)
 ```

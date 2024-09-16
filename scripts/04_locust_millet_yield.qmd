@@ -1,7 +1,51 @@
+---
+title: "locust millet attack"
+author: "Douglas Lawton"
+format: html
+editor: source
+---
 
 ## Question 3: Does *O. senegalensis* abundance and attack influence yield across treatment
 
 Okay so this is a tricky question to ask due to the co-correlation between treatment, yield, and locust abundance. Fertilization obviously influences both yield and locust abundance/attack. So how do we model the effect locusts have on yield *independently*?
+
+
+## Library import and reading in data
+
+```{r reading in packages, warning=FALSE,message=FALSE}
+
+
+# Define a function to check and install packages if not already installed
+install_and_load <- function(packages) {
+  for (pkg in packages) {
+    if (!require(pkg, character.only = TRUE)) {
+      install.packages(pkg, dependencies = TRUE)
+      library(pkg, character.only = TRUE)
+    }
+  }
+}
+
+
+
+# List of packages to install and load
+packages <- c("tidyverse", "here", "janitor",  
+              "ggpubr", "MetBrewer", "patchwork",'sf',
+              'rnaturalearth','rnaturalearthdata','mgcv','gratia','emmeans')
+
+# Call the function with your package list
+install_and_load(packages)
+
+
+options(width=200)
+here::i_am('README.md')
+
+```
+
+
+```{r}
+dat <- read_csv('data/analysis_ready_data.csv')
+
+```
 
 lets demonstrate this co-correlation
 
@@ -80,7 +124,8 @@ okay I'm not totally confident to have a model where yield, treatment, and locus
 
 ```{r locust abundance/attack and yield modeling}
 
-yield_locust_dat
+dat <- dat |>
+  mutate(across(where(is.character),~as.factor(.)))
 
 yield_locust_mod0 <- gam(yield ~ 1,data=dat,family=tw())
 
@@ -90,9 +135,11 @@ yield_locust_mod2 <- gam(yield ~ ose_num +
                              s(mission,bs='re'),
                          data=dat,family=tw())
 
-
-
 summary(yield_locust_mod1)
 appraise(yield_locust_mod2)
 summary(yield_locust_mod2)
+
 ```
+
+
+## Saving to disk for figure and table construction:

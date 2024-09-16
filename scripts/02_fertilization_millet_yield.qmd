@@ -1,3 +1,10 @@
+---
+title: "fertilization_millet_yield"
+author: "Douglas Lawton"
+format: html
+editor: source
+---
+
 
 # Question 1: How does fertilization influence millet yield
 
@@ -31,6 +38,12 @@ install_and_load(packages)
 
 options(width=200)
 here::i_am('README.md')
+
+```
+
+```{r}
+
+dat <- read_csv('data/analysis_ready_data.csv')
 
 ```
 
@@ -90,7 +103,10 @@ Lets build a statistical model with village and farmer as random effects and loo
 
 yield_mod_dat <- dat |>
   select(yield,treatment,village,farmer_num,village) |>
-  distinct() |> drop_na(yield)
+  mutate(village = factor(village),
+    treatment = factor(treatment)) |>
+  distinct() |> 
+  drop_na(yield)
   
   
 mod0 <- gam(yield ~ 1,
@@ -186,9 +202,9 @@ final_yield_model_est_marginal_means <- emms |>
 
 
 farmer_yield_variance <- smooth_estimates(mod3) |>
-  ggplot(aes(x=reorder(farmer_num,-est),y=est)) +
+  ggplot(aes(x=reorder(farmer_num,-.estimate),y=.estimate)) +
     geom_point() +
-    geom_errorbar(aes(ymin=est-se,ymax=est+se),width=0) +
+    geom_errorbar(aes(ymin=.estimate-.se,ymax=.estimate+.se),width=0) +
     coord_flip() +
     xlab("Farmer Number") +
     ylab("yield estimate") +
@@ -204,5 +220,21 @@ ggsave(farmer_yield_variance,
 
 final_yield_model_est_marginal_means
 farmer_yield_variance
+
+```
+
+
+## Saving to disk for figure and table construction:
+
+
+```{r}
+
+yield_data <- dat |>
+  select(farmer_num,village,treatment,yield) |>
+  left_join(emms,by='treatment')
+
+
+write.csv(yield_data,file=here('data/processed/yield_raw_and_model_data.csv'))
+
 
 ```
