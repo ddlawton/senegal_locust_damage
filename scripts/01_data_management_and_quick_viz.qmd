@@ -101,7 +101,7 @@ dat5 <- dat4 |>
          village = factor(village)) |>
   select(!c(date_surveyed,hour)) |>
   select(farmer_num,village,treatment,yield,latitude:att_mil,datetime) |>
-  mutate(ose_num = case_when(village == 'Gossas' ~ ose_num*0.85,village == 'Gniby' ~ ose_num*0.9,TRUE~ose_num))
+  mutate(ose_num_adj = case_when(village == 'Gossas' ~ ose_num*0.85,village == 'Gniby' ~ ose_num*0.9,TRUE~ose_num))
 
 ```
 

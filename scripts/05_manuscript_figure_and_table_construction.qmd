@@ -28,7 +28,6 @@ packages <- c("tidyverse", "here", "janitor",
 # Call the function with your package list
 install_and_load(packages)
 
-
 options(width=200)
 here::i_am('README.md')
 ```
@@ -56,7 +55,7 @@ yield <- read_csv(here('data/processed/yield_raw_and_model_data.csv'))
 
  ```{r}
 
-p1 <- abun_mil_attack |>
+pA <- abun_mil_attack |>
     select(village,treatment,ose_num,mission) |>
     mutate(treatment = factor(case_when(mission == 'm1' ~ 'PT', TRUE ~ treatment),levels=c('PT','control','fertilized')),
         mission = case_when(mission == 'm1' ~ 'PT',mission == 'm2' ~ 'S1',mission == 'm3' ~ 'S3')) |>
@@ -68,16 +67,68 @@ p1 <- abun_mil_attack |>
     xlab('') +
     ylab('Locust Count')
 
-p2 <- abun_mil_attack |>
-    select(village,treatment,starts_with('abundance_')) |>
-    distinct() >
-    filter()
+pB <- abun_mil_attack |>
+    select(treatment,starts_with('abundance_')) |>
+    distinct() |>
     ggplot(aes(x=treatment,y=abundance_response,color=treatment)) +
+      geom_point(size=5) +
+      geom_errorbar(aes(ymin=abundance_response-abundance_se,ymax=abundance_response+abundance_se),width=0) +
+      scale_color_manual(values = c('black','dark green')) +
+      theme_pubr()  + 
+      theme(legend.position="none") +
+      xlab('') +
+      ylab('')
+
+
+pC <- abun_mil_attack |>
+    select(village,treatment,att_mil,mission) |>
+    mutate(treatment = factor(case_when(mission == 'm1' ~ 'PT', TRUE ~ treatment),levels=c('PT','control','fertilized')),
+        mission = case_when(mission == 'm1' ~ 'PT',mission == 'm2' ~ 'S1',mission == 'm3' ~ 'S3')) |>
+    ggplot(aes(x=mission,y=att_mil,color=treatment)) +
         geom_point(position = position_jitterdodge(jitter.height=0,jitter.width=0.25)) +
     scale_color_manual(values = c('dark grey','black','dark green')) +
     theme_pubr()  + 
     theme(legend.position="none") +
     xlab('') +
-    ylab('Locust Count')
+    ylab('Locust Damage')
+
+pD <- abun_mil_attack |>
+    select(treatment,starts_with('att_mil_')) |>
+    distinct() |>
+    ggplot(aes(x=treatment,y=att_mil_response,color=treatment)) +
+      geom_point(size=5) +
+      geom_errorbar(aes(ymin=att_mil_response-att_mil_se,ymax=att_mil_response+att_mil_se),width=0) +
+      scale_color_manual(values = c('black','dark green')) +
+      theme_pubr()  + 
+      theme(legend.position="none") +
+      xlab('') +
+      ylab('')
+
+pE <- yield |>
+    select(village,treatment,yield) |>
+    distinct() |>
+    mutate(treatment = factor(treatment,levels=c('PT','control','fertilized'))) |>
+    ggplot(aes(x=treatment,y=yield,color=treatment)) +
+        geom_point(position = position_jitterdodge(jitter.height=0,jitter.width=0.25)) +
+    scale_color_manual(values = c('black','dark green')) +
+    theme_pubr()  + 
+    theme(legend.position="none") +
+    xlab('') +
+    ylab('Yield')
+
+pF <- yield |>
+    select(treatment,response) |>
+    distinct() |>
+    ggplot(aes(x=treatment,y=att_mil_response,color=treatment)) +
+      geom_point(size=5) +
+      geom_errorbar(aes(ymin=att_mil_response-att_mil_se,ymax=att_mil_response+att_mil_se),width=0) +
+      scale_color_manual(values = c('black','dark green')) +
+      theme_pubr()  + 
+      theme(legend.position="none") +
+      xlab('') +
+      ylab('')
+
+
+
 
  ```
