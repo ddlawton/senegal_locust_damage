@@ -77,7 +77,8 @@ pB <- abun_mil_attack |>
       theme_pubr()  + 
       theme(legend.position="none") +
       xlab('') +
-      ylab('')
+      ylab('') +
+  theme(axis.text.x=element_blank())
 
 
 pC <- abun_mil_attack |>
@@ -102,7 +103,8 @@ pD <- abun_mil_attack |>
       theme_pubr()  + 
       theme(legend.position="none") +
       xlab('') +
-      ylab('')
+      ylab('') +
+  theme(axis.text.x=element_blank())
 
 pE <- yield |>
     select(village,treatment,yield) |>
@@ -117,11 +119,13 @@ pE <- yield |>
     ylab('Yield')
 
 pF <- yield |>
-    select(treatment,response) |>
+    select(treatment,response,SE) |>
     distinct() |>
-    ggplot(aes(x=treatment,y=att_mil_response,color=treatment)) +
+    group_by(treatment) |>
+    mutate(reponse = mean(response),SE = mean(SE)) |>
+    ggplot(aes(x=treatment,y=reponse,color=treatment)) +
       geom_point(size=5) +
-      geom_errorbar(aes(ymin=att_mil_response-att_mil_se,ymax=att_mil_response+att_mil_se),width=0) +
+      geom_errorbar(aes(ymin=reponse-SE,ymax=reponse+SE),width=0) +
       scale_color_manual(values = c('black','dark green')) +
       theme_pubr()  + 
       theme(legend.position="none") +
@@ -129,6 +133,24 @@ pF <- yield |>
       ylab('')
 
 
+
+
+ ```
+
+
+
+
+ ```{r}
+ 
+ design <- ("
+  1#2
+  3#4
+  5#6
+")
+
+manuscript_figure <- pA + pB + pC + pD + pE + pF + plot_layout(design = design)
+
+ggsave(manuscript_figure,file=here('output/panel_1.png'),width=8,height=8)
 
 
  ```
