@@ -143,3 +143,13 @@ summary(yield_locust_mod2)
 
 
 ## Saving to disk for figure and table construction:
+
+
+
+```{r}
+
+write.csv(locust_dat,file=here('data/processed/locust_abundance_and_att_mil_raw_and_model_data.csv'))
+
+
+
+```

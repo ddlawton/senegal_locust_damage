@@ -77,7 +77,7 @@ dat3 <- dat2 |>
 
 Okay now that I figured out the coordinates issues, lets get this into a long format. so that each mission is given a row. also lets get the time into a good format as well
 
-I just learned that the abundances are relative to all grasshoppers caught so the OSE numbers will need to be adjusted:
+I just learned that the abundance and attack are relative to all grasshoppers caught so the OSE numbers will need to be adjusted:
 
 - Gniby = 90% OSE
 - Gossas = 85% OSE
@@ -95,13 +95,16 @@ dat4 <- dat3 %>%
 
 dat5 <- dat4 |>
   mutate(hour = gsub(' mn','mn',hour)) |>
-  mutate(datetime = as.POSIXct(paste(date_surveyed, hour), format = "%Y-%m-%d %Hh %Mmn"),
+  mutate(datetime = as.POSIXxct(paste(date_surveyed, hour), format = "%Y-%m-%d %Hh %Mmn"),
          mission = factor(mission),
          farmer_num = factor(farmer_num),
          village = factor(village)) |>
   select(!c(date_surveyed,hour)) |>
   select(farmer_num,village,treatment,yield,latitude:att_mil,datetime) |>
-  mutate(ose_num_adj = case_when(village == 'Gossas' ~ ose_num*0.85,village == 'Gniby' ~ ose_num*0.9,TRUE~ose_num))
+  mutate(ose_num_adj = case_when(village == 'Gossas' ~ round(ose_num*0.85),
+          village == 'Gniby' ~ round(ose_num*0.9),TRUE~ose_num),
+    att_mil_adj = case_when(village == 'Gossas' ~ att_mil*0.85,
+    village == 'Gniby' ~ att_mil*0.9,TRUE~att_mil))
 
 ```
 
