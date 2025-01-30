@@ -230,7 +230,7 @@ farmer_yield_variance
 ```{r}
 
 yield_data <- dat |>
-  select(farmer_num,village,treatment,yield) |>
+  select(farmer_num,village,treatment,yield,mission) |>
   left_join(emms,by='treatment')
 
 

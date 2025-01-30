@@ -62,41 +62,49 @@ plot_list <- list(
   raw_ose_count_treatment = dat |>
     ggplot(aes(x = treatment, y = ose_num)) +
     geom_jitter(width = 0.2) +
+    ylab("locust count")  +
     theme_pubr(),
   
   raw_ose_count_humidity_percent = dat |>
     ggplot(aes(x = humidity_percent, y = ose_num)) +
     geom_jitter(width = 0.2) +
+    ylab("locust count") +
     theme_pubr(),
   
   raw_ose_count_ground_cover_percent = dat |>
     ggplot(aes(x = ground_cover_percent, y = ose_num)) +
-    geom_jitter(width = 0.2) +
+    geom_jitter(width = 0.2)  +
+    ylab("locust count") +
     theme_pubr(),
   
   raw_ose_count_hour = dat |>
     ggplot(aes(x = hour, y = ose_num)) +
     geom_jitter(width = 0.2) +
+    ylab("locust count") +
     theme_pubr(),
   
   raw_millet_attack_treatment = dat |>
     ggplot(aes(x = treatment, y = att_mil)) +
     geom_jitter(width = 0.2) +
+    ylab("locust count") +
     theme_pubr(),
   
   raw_millet_attack_humidity_percent = dat |>
     ggplot(aes(x = humidity_percent, y = att_mil)) +
-    geom_point() +
+    geom_point()  +
+    ylab("locust count")  +
     theme_pubr(),
   
   raw_millet_attack_ground_cover_percent = dat |>
     ggplot(aes(x = ground_cover_percent, y = att_mil)) +
     geom_point() +
+    ylab("locust count")  +
     theme_pubr(),
   
   raw_millet_attack_hour = dat |>
     ggplot(aes(x = hour, y = att_mil)) +
     geom_point() +
+    ylab("locust count") +
     theme_pubr()
 )
 
@@ -133,6 +141,7 @@ ose_number_village_treatment <- dat |>
   ggplot(aes(x=treatment,y=ose_num,color=village)) +
     geom_jitter(width=0.2) +
     scale_color_met_d(name='Demuth') +
+    ylab("locust count") +
     theme_pubr()
 
 
@@ -141,6 +150,7 @@ ose_number_village_mission <- dat |>
     geom_line(alpha=0.5) +
     geom_point(size=2) +
     scale_color_met_d(name='Demuth') +
+    ylab("locust count") +
     theme_pubr() +
     facet_wrap(~mission,ncol=2)
 
@@ -151,6 +161,7 @@ ose_number_treatment_village_mission <- dat |>
     geom_line(alpha=0.5) +
     geom_point(size=2) +
     scale_color_met_d(name='Demuth') +
+    ylab("locust count") +
     theme_pubr() +
     facet_wrap(~treatment)
 
@@ -341,7 +352,7 @@ summary(att_mil_mod4)
 ```{r}
 
 locust_dat <- dat |>
-  select(farmer_num,village,treatment,ose_num,att_mil) |>
+  select(farmer_num,village,treatment,ose_num,att_mil,mission) |>
   left_join(ose_num_emms,by='treatment') |>
   rename(abundance_response = response,abundance_se = SE,abundance_df = df, abundance_lower.CL = lower.CL, abundance_upper.CL = upper.CL) |>
   left_join(att_mil_emms,by='treatment') |>

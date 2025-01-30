@@ -150,7 +150,7 @@ pF <- yield |>
 
 manuscript_figure <- pA + pB + pC + pD + pE + pF + plot_layout(design = design)
 
-ggsave(manuscript_figure,file=here('output/panel_1.png'),width=8,height=8)
+ggsave(manuscript_figure,file=here('output/panel_1.pdf'),width=8,height=8)
 
 
  ```
