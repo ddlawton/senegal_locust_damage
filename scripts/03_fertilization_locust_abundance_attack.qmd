@@ -50,7 +50,8 @@ Lets also get a time of day measure as this can affect locust abundances greatly
 ```{r}
 
 dat <- read_csv('data/analysis_ready_data.csv') |>
-  mutate(hour = lubridate::hour(datetime))
+  mutate(hour = lubridate::hour(datetime)) |>
+  filter(mission != 'm1')
 
 ```
 

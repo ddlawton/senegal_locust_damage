@@ -95,7 +95,7 @@ dat4 <- dat3 %>%
 
 dat5 <- dat4 |>
   mutate(hour = gsub(' mn','mn',hour)) |>
-  mutate(datetime = as.POSIXxct(paste(date_surveyed, hour), format = "%Y-%m-%d %Hh %Mmn"),
+  mutate(datetime = as.POSIXct(paste(date_surveyed, hour), format = "%Y-%m-%d %Hh %Mmn"),
          mission = factor(mission),
          farmer_num = factor(farmer_num),
          village = factor(village)) |>
@@ -104,7 +104,8 @@ dat5 <- dat4 |>
   mutate(ose_num_adj = case_when(village == 'Gossas' ~ round(ose_num*0.85),
           village == 'Gniby' ~ round(ose_num*0.9),TRUE~ose_num),
     att_mil_adj = case_when(village == 'Gossas' ~ att_mil*0.85,
-    village == 'Gniby' ~ att_mil*0.9,TRUE~att_mil))
+    village == 'Gniby' ~ att_mil*0.9,TRUE~att_mil)) |>
+    filter(mission != 'm1')
 
 ```
 
@@ -209,3 +210,106 @@ Alright, I think i've seen enough to make some initial statements.
 5) Theres not a strong difference between village
 
 6) mission 1 definitely had more locusts than mission 2 and 3 which had roughly the same number of locusts and attacks
+
+I am going to save those plots out int `output/raw_visualization`
+
+
+```{r}
+
+# Define directory
+output_dir <- here("output", "raw_visualization")
+
+# Create plots with better axis labels
+plots <- list(
+  "scatter_treatment_ose_num" = dat5 |>
+    ggplot(aes(x = treatment, y = ose_num)) +
+    geom_jitter(width = 0.2, height = 0) +
+    labs(x = "treatment", y = "locust Count") +
+    theme_pubr(),
+  
+  "scatter_treatment_att_mil" = dat5 |>
+    ggplot(aes(x = treatment, y = att_mil)) +
+    geom_jitter(width = 0.2, height = 0) +
+    labs(x = "treatment", y = "locust damage") +
+    theme_pubr(),
+
+  "scatter_treatment_yield" = dat5 |>
+    ggplot(aes(x = treatment, y = yield)) +
+    geom_jitter(width = 0.2, height = 0) +
+    labs(x = "treatment", y = "yield") +
+    theme_pubr(),
+
+  "scatter_ose_num_att_mil" = dat5 |>
+    ggplot(aes(x = ose_num, y = att_mil)) +
+    geom_point() +
+    geom_smooth(method = "lm") +
+    labs(x = "locust count", y = "locust damage") +
+    theme_pubr(),
+
+  "scatter_ose_num_temp" = dat5 |>
+    ggplot(aes(y = ose_num, x = temp_c)) +
+    geom_point() +
+    labs(x = "temperature (°C)", y = "locust Count") +
+    theme_pubr(),
+
+  "scatter_ose_num_humidity" = dat5 |>
+    ggplot(aes(y = ose_num, x = humidity_percent)) +
+    geom_point() +
+    labs(x = "humidity (%)", y = "locust Count") +
+    theme_pubr(),
+
+  "scatter_ose_num_ground_cover" = dat5 |>
+    ggplot(aes(y = ose_num, x = ground_cover_percent)) +
+    geom_point() +
+    labs(x = "ground cover (%)", y = "locust count") +
+    theme_pubr(),
+
+  "scatter_ose_num_mission_village" = dat5 |>
+    ggplot(aes(y = ose_num, x = mission, color = village)) +
+    geom_jitter(width = 0.3, height = 0) +
+    MetBrewer::scale_color_met_d(name = "Degas") +
+    labs(x = "mission", y = "locust Count", color = "village") +
+    theme_pubr(),
+
+  "scatter_att_mil_mission_village" = dat5 |>
+    ggplot(aes(y = att_mil, x = mission, color = village)) +
+    geom_jitter(width = 0.3, height = 0) +
+    MetBrewer::scale_color_met_d(name = "Degas") +
+    labs(x = "mission", y = "locust damage", color = "village") +
+    theme_pubr()
+)
+
+# Spatial plots
+africa <- ne_countries(scale = "medium", continent = "Africa", returnclass = "sf") |>
+  filter(name_en == "Senegal")
+
+coordinates <- st_as_sf(dat5 |> drop_na(longitude, latitude), coords = c("longitude", "latitude"), crs = 4326)
+
+plots[["spatial_ose_num"]] <- ggplot() +
+  geom_sf(data = africa) +
+  geom_sf(data = coordinates, aes(color = ose_num)) +
+  theme_void() +
+  facet_wrap(~mission, ncol = 2) +
+  scale_color_viridis_c(trans = "sqrt") +
+  labs(color = "locust Count")
+
+plots[["spatial_att_mil"]] <- ggplot() +
+  geom_sf(data = africa) +
+  geom_sf(data = coordinates, aes(color = att_mil)) +
+  theme_void() +
+  facet_wrap(~mission, ncol = 2) +
+  scale_color_viridis_c(trans = "sqrt") +
+  labs(color = "locust damage")
+
+# Save plots
+for (name in names(plots)) {
+  ggsave(
+    filename = file.path(output_dir, paste0(name, ".png")),
+    plot = plots[[name]],
+    width = 6,
+    height = 4,
+    dpi = 300
+  )
+}
+
+```
