@@ -39,38 +39,9 @@ lets read in the data, get the coordinates into a usable format:
 
 
 
-dat <- read_xlsx(here('data/alldata_v17.xlsx'),sheet = 1,.name_repair = 'minimal') |>
-  select(1:32) |>
-  clean_names() |>
-  mutate(latitude = str_extract(gps,pattern = 'N\\d+°\\d+\\.\\d+’'),
-         longitude = str_extract(gps,pattern = 'W\\d+°\\d+\\.\\d+’'))
-
-dat2 <- dat |>
-  mutate(lat_degree = str_extract(latitude,'(?<=N)\\d{2}'),
-         lat_minute = str_extract(latitude,'(?<=N\\d{2}°)\\d{2}'),
-         lat_second = str_extract(latitude,'\\.(\\d+)'),
-         long_degree = str_extract(longitude,'(?<=W)\\d{2}'),
-         long_minute = str_extract(longitude,'(?<=W\\d{2}°)\\d{2}'),
-         long_second = str_extract(longitude,'\\.(\\d+)'),
-         across(starts_with(c('lat_', 'long_')), as.numeric))
-
-
-# Function to convert degrees, minutes, and seconds to decimal degrees
-convert_to_decimal <- function(degrees, minutes, seconds) {
-  decimal_degrees <- degrees + minutes / 60 + seconds / 3600
-  return(decimal_degrees)
-}
-
-
-dat3 <- dat2 |>
-  mutate(latitude = convert_to_decimal(as.numeric(lat_degree),
-                                       as.numeric(lat_minute),
-                                       as.numeric(lat_second)),
-         longitude = convert_to_decimal(as.numeric(long_degree),
-                                       as.numeric(long_minute),
-                                       as.numeric(long_second)) * -1) |>
-  select(!c(starts_with(c('lat_','long_')),gps))
-
+dat <- read_xlsx(here('data/alldata_v19.xlsx'),sheet = 1,.name_repair = 'minimal') |>
+  select(1:28) |>
+  clean_names() 
 
 ```
 
@@ -88,26 +59,26 @@ I just learned that the abundance and attack are relative to all grasshoppers ca
 ```{r pivoting and time management}
 
 # Using pivot_longer
-dat4 <- dat3 %>%
-  pivot_longer(cols = starts_with(c('m1_', 'm2_', 'm3_')), 
-               names_to = c('mission','.value'), 
-               names_pattern = '^(m\\d+)_(.*)')
+dat4 <- dat %>%
+  pivot_longer(cols = starts_with(c('s1_', 's2_', 's3_','s4_')), 
+               names_to = c('survey','.value'), 
+               names_pattern = '^(s\\d+)_(.*)')
 
 dat5 <- dat4 |>
   mutate(hour = gsub(' mn','mn',hour)) |>
   mutate(datetime = as.POSIXct(paste(date_surveyed, hour), format = "%Y-%m-%d %Hh %Mmn"),
-         mission = factor(mission),
+         survey = factor(survey),
          farmer_num = factor(farmer_num),
          village = factor(village)) |>
   select(!c(date_surveyed,hour)) |>
-  select(farmer_num,village,treatment,yield,latitude:att_mil,datetime) |>
+  select(farmer_num,village,treatment,survey:yield,datetime) |>
   mutate(ose_num_adj = case_when(village == 'Gossas' ~ round(ose_num*0.85),
           village == 'Gniby' ~ round(ose_num*0.9),TRUE~ose_num),
     att_mil_adj = case_when(village == 'Gossas' ~ att_mil*0.85,
-    village == 'Gniby' ~ att_mil*0.9,TRUE~att_mil)) |>
-    filter(mission != 'm1')
+    village == 'Gniby' ~ att_mil*0.9,TRUE~att_mil)) 
 
 ```
+
 
 Lets write the dataframe out to disk:
 
@@ -124,50 +95,52 @@ Here are some quick plots making sure everything looks good:
 
 ```{r quick viz}
 
-dat5 |>
-  ggplot(aes(x=treatment,y=ose_num)) +
+dat6 <- dat5 |> filter(survey != 's1')
+
+dat6 |>
+  ggplot(aes(x=treatment,y=ose_num_adj)) +
     geom_jitter(width=0.2,height=0) +
     theme_pubr()
 
-dat5 |>
-  ggplot(aes(x=treatment,y=att_mil)) +
+dat6 |>
+  ggplot(aes(x=treatment,y=att_mil_adj)) +
     geom_jitter(width=0.2,height=0) +
     theme_pubr()
 
-dat5 |>
+dat6 |>
   ggplot(aes(x=treatment,y=yield)) +
     geom_jitter(width=0.2,height=0) +
     theme_pubr()
 
-dat5 |>
-  ggplot(aes(x=ose_num,y=att_mil)) +
+dat6 |>
+  ggplot(aes(x=ose_num_adj,y=att_mil)) +
     geom_point() +
     geom_smooth(method='lm') +
     theme_pubr()
 
-dat5 |>
-  ggplot(aes(y=ose_num,x=temp_c)) +
+dat6 |>
+  ggplot(aes(y=ose_num_adj,x=temp_c)) +
     geom_point() +
     theme_pubr()
 
-dat5 |>
-  ggplot(aes(y=ose_num,x=humidity_percent)) +
+dat6 |>
+  ggplot(aes(y=ose_num_adj,x=humidity_percent)) +
     geom_point() +
     theme_pubr()
 
-dat5 |>
-  ggplot(aes(y=ose_num,x=ground_cover_percent)) +
+dat6 |>
+  ggplot(aes(y=ose_num_adj,x=ground_cover_percent)) +
     geom_point() +
     theme_pubr()
 
-dat5 |>
-  ggplot(aes(y=ose_num,x=mission,color=village)) +
+dat6 |>
+  ggplot(aes(y=ose_num_adj,x=mission,color=village)) +
     geom_jitter(width=0.3,height=0) +
     MetBrewer::scale_color_met_d(name = 'Degas') +
     theme_pubr()
 
-dat5 |>
-  ggplot(aes(y=att_mil,x=mission,color=village)) +
+dat6 |>
+  ggplot(aes(y=att_mil_adj,x=mission,color=village)) +
     geom_jitter(width=0.3,height=0)  +
     MetBrewer::scale_color_met_d(name = 'Degas') +
     theme_pubr()
@@ -177,7 +150,7 @@ dat5 |>
 africa <- ne_countries(scale = "medium", continent = "Africa", returnclass = "sf") |>
   filter(name_en == 'Senegal')
 
-coordinates <- st_as_sf((dat5 %>% drop_na(longitude, latitude)), coords = c("longitude", "latitude"), crs = 4326)
+coordinates <- st_as_sf((dat6 %>% drop_na(longitude, latitude)), coords = c("longitude", "latitude"), crs = 4326)
 
 ggplot() +
   geom_sf(data = africa) +
@@ -188,7 +161,7 @@ ggplot() +
 
 ggplot() +
   geom_sf(data = africa) +
-  geom_sf(data = coordinates,aes(color=att_mil)) +
+  geom_sf(data = coordinates,aes(color=att_mil_adj)) +
   theme_void() +
   facet_wrap(~mission,ncol = 2) +
   scale_color_viridis_c(trans = 'sqrt')
@@ -211,105 +184,3 @@ Alright, I think i've seen enough to make some initial statements.
 
 6) mission 1 definitely had more locusts than mission 2 and 3 which had roughly the same number of locusts and attacks
 
-I am going to save those plots out int `output/raw_visualization`
-
-
-```{r}
-
-# Define directory
-output_dir <- here("output", "raw_visualization")
-
-# Create plots with better axis labels
-plots <- list(
-  "scatter_treatment_ose_num" = dat5 |>
-    ggplot(aes(x = treatment, y = ose_num)) +
-    geom_jitter(width = 0.2, height = 0) +
-    labs(x = "treatment", y = "locust Count") +
-    theme_pubr(),
-  
-  "scatter_treatment_att_mil" = dat5 |>
-    ggplot(aes(x = treatment, y = att_mil)) +
-    geom_jitter(width = 0.2, height = 0) +
-    labs(x = "treatment", y = "locust damage") +
-    theme_pubr(),
-
-  "scatter_treatment_yield" = dat5 |>
-    ggplot(aes(x = treatment, y = yield)) +
-    geom_jitter(width = 0.2, height = 0) +
-    labs(x = "treatment", y = "yield") +
-    theme_pubr(),
-
-  "scatter_ose_num_att_mil" = dat5 |>
-    ggplot(aes(x = ose_num, y = att_mil)) +
-    geom_point() +
-    geom_smooth(method = "lm") +
-    labs(x = "locust count", y = "locust damage") +
-    theme_pubr(),
-
-  "scatter_ose_num_temp" = dat5 |>
-    ggplot(aes(y = ose_num, x = temp_c)) +
-    geom_point() +
-    labs(x = "temperature (°C)", y = "locust Count") +
-    theme_pubr(),
-
-  "scatter_ose_num_humidity" = dat5 |>
-    ggplot(aes(y = ose_num, x = humidity_percent)) +
-    geom_point() +
-    labs(x = "humidity (%)", y = "locust Count") +
-    theme_pubr(),
-
-  "scatter_ose_num_ground_cover" = dat5 |>
-    ggplot(aes(y = ose_num, x = ground_cover_percent)) +
-    geom_point() +
-    labs(x = "ground cover (%)", y = "locust count") +
-    theme_pubr(),
-
-  "scatter_ose_num_mission_village" = dat5 |>
-    ggplot(aes(y = ose_num, x = mission, color = village)) +
-    geom_jitter(width = 0.3, height = 0) +
-    MetBrewer::scale_color_met_d(name = "Degas") +
-    labs(x = "mission", y = "locust Count", color = "village") +
-    theme_pubr(),
-
-  "scatter_att_mil_mission_village" = dat5 |>
-    ggplot(aes(y = att_mil, x = mission, color = village)) +
-    geom_jitter(width = 0.3, height = 0) +
-    MetBrewer::scale_color_met_d(name = "Degas") +
-    labs(x = "mission", y = "locust damage", color = "village") +
-    theme_pubr()
-)
-
-# Spatial plots
-africa <- ne_countries(scale = "medium", continent = "Africa", returnclass = "sf") |>
-  filter(name_en == "Senegal")
-
-coordinates <- st_as_sf(dat5 |> drop_na(longitude, latitude), coords = c("longitude", "latitude"), crs = 4326)
-
-plots[["spatial_ose_num"]] <- ggplot() +
-  geom_sf(data = africa) +
-  geom_sf(data = coordinates, aes(color = ose_num)) +
-  theme_void() +
-  facet_wrap(~mission, ncol = 2) +
-  scale_color_viridis_c(trans = "sqrt") +
-  labs(color = "locust Count")
-
-plots[["spatial_att_mil"]] <- ggplot() +
-  geom_sf(data = africa) +
-  geom_sf(data = coordinates, aes(color = att_mil)) +
-  theme_void() +
-  facet_wrap(~mission, ncol = 2) +
-  scale_color_viridis_c(trans = "sqrt") +
-  labs(color = "locust damage")
-
-# Save plots
-for (name in names(plots)) {
-  ggsave(
-    filename = file.path(output_dir, paste0(name, ".png")),
-    plot = plots[[name]],
-    width = 6,
-    height = 4,
-    dpi = 300
-  )
-}
-
-```

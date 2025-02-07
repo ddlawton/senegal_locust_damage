@@ -44,8 +44,12 @@ here::i_am('README.md')
 
 ```{r}
 dat <- read_csv('data/analysis_ready_data.csv')
+dat_just_s3 <- dat |> 
+    drop_na(yield)
 
+dat_just_s3$yield
 ```
+
 
 lets demonstrate this co-correlation
 
@@ -53,14 +57,14 @@ lets demonstrate this co-correlation
 
 # lcoust abundance/attack and yield correlation
 
-raw_ose_count_yield_correlation <- dat |>
-  ggplot(aes(x=ose_num,y=yield)) +
+raw_ose_count_yield_correlation <- dat_just_s3 |>
+  ggplot(aes(x=ose_num_adj,y=yield)) +
     geom_point() +
     theme_pubr() +
     xlab("locust count")
 
-raw_ose_damage_yield_correlation <- dat |>
-  ggplot(aes(x=att_mil,y=yield)) +
+raw_ose_damage_yield_correlation <- dat_wo_m1 |>
+  ggplot(aes(x=att_mil_adj,y=yield)) +
     geom_point() +
     theme_pubr() +
     xlab('locust damage')
@@ -69,7 +73,7 @@ raw_ose_damage_yield_correlation <- dat |>
 # locust abundance and attack correlation
 
 ose_count_damage_correlation <- dat |>
-  ggplot(aes(x=ose_num,y=att_mil,color=treatment)) +
+  ggplot(aes(x=ose_num,y=att_mil_adj,color=treatment)) +
     geom_point() +
     theme_pubr() +
     scale_color_met_d(name='Degas')  +
@@ -80,7 +84,7 @@ ose_count_damage_correlation <- dat |>
 
 # yield, abudance and attack with treatment:
 
-p1 <- dat |>
+p1 <- dat_wo_m1 |>
   ggplot(aes(x=treatment,y=yield,color=village)) +
     geom_jitter(width=0.3,height=0) +
     theme_pubr() +
@@ -88,16 +92,16 @@ p1 <- dat |>
     ylab("yield") +
     scale_color_met_d(name='Demuth')
 
-p2 <- dat |>
-  ggplot(aes(x=treatment,y=ose_num,color=village)) +
+p2 <- dat_wo_m1 |>
+  ggplot(aes(x=treatment,y=ose_num_adj,color=village)) +
     geom_jitter(width=0.3,height=0)  +
     theme_pubr() +
     xlab("") +
     ylab("locust count") +
     scale_color_met_d(name='Demuth')
 
-p3 <- dat |>
-  ggplot(aes(x=treatment,y=att_mil,color=village)) +
+p3 <- dat_wo_m1 |>
+  ggplot(aes(x=treatment,y=att_mil_adj,color=village)) +
     geom_jitter(width=0.3,height=0)  +
     theme_pubr()  +
     xlab("") +
@@ -124,19 +128,19 @@ okay I'm not totally confident to have a model where yield, treatment, and locus
 
 ```{r locust abundance/attack and yield modeling}
 
-dat <- dat |>
-  mutate(across(where(is.character),~as.factor(.)))
+dat_wo_m1 <- dat_wo_m1 |>
+  mutate(mission = factor(mission))
 
-yield_locust_mod0 <- gam(yield ~ 1,data=dat,family=tw())
+yield_locust_mod0 <- gam(yield ~ 1,data=dat_wo_m1,family=tw())
 
-yield_locust_mod1 <- gam(yield ~ ose_num,data=dat,family=tw())
+yield_locust_mod1 <- gam(yield ~ ose_num_adj,data=dat_wo_m1,family=tw())
 
-yield_locust_mod2 <- gam(yield ~ ose_num +
-                             s(mission,bs='re'),
-                         data=dat,family=tw())
+# yield_locust_mod2 <- gam(yield ~ ose_num_adj +
+#                              s(mission,bs='re'),
+#                          data=dat_wo_m1,family=tw())
 
 summary(yield_locust_mod1)
-appraise(yield_locust_mod2)
+draw(yield_locust_mod1,parametric = TRUE)
 summary(yield_locust_mod2)
 
 ```

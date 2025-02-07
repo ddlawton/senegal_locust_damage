@@ -44,6 +44,7 @@ here::i_am('README.md')
 ```{r}
 
 dat <- read_csv('data/analysis_ready_data.csv')
+dat_wo_s1 <- dat |> filter(survey != 's1')
 
 ```
 
@@ -51,7 +52,9 @@ This should be self explanatory, but lets see what the data looks like.
 
 ```{r exploratory plots}
 
-raw_yield_farmer_plot <- dat |>
+raw_yield_farmer_plot <- dat_wo_s1 |>
+  select(farmer_num,treatment,yield,village) |>
+  distinct() |>
   ggplot(aes(x=treatment,y=yield,group=farmer_num)) +
     geom_line(alpha=0.5) +
     geom_point(size=2) +
@@ -60,14 +63,18 @@ raw_yield_farmer_plot <- dat |>
     xlab("") +
     facet_wrap(~village)
 
-raw_yield_plot <- dat |>
+raw_yield_plot <- dat_wo_s1 |>
+  select(farmer_num,treatment,yield) |>
+  distinct() |>
   ggplot(aes(x=treatment,y=yield)) +
     geom_jitter(width=0.2,height=0) +
     theme_pubr() +
     ylab("Yield") +
     xlab("") 
 
-raw_yield_boxplot_plot <- dat |>
+raw_yield_boxplot_plot <- dat_wo_s1 |>
+  select(farmer_num,treatment,yield) |>
+  distinct() |>
   ggplot(aes(x=treatment,y=yield)) +
     geom_boxplot(outlier.size = -1) +
     geom_jitter(width=0.2,height=0,pch=21,color='black') +
@@ -101,7 +108,7 @@ Lets build a statistical model with village and farmer as random effects and loo
 
 ```{r yield modeling}
 
-yield_mod_dat <- dat |>
+yield_mod_dat <- dat_wo_s1 |>
   select(yield,treatment,village,farmer_num,village) |>
   mutate(village = factor(village),
     treatment = factor(treatment)) |>
@@ -154,7 +161,7 @@ summary(mod3)
 
 ```
 
-Lets visually plot the final estimated marginal means:\
+Lets visually plot the final estimated marginal means:
 
 ```{r emm plotting}
 
@@ -230,7 +237,7 @@ farmer_yield_variance
 ```{r}
 
 yield_data <- dat |>
-  select(farmer_num,village,treatment,yield,mission) |>
+  select(farmer_num,village,treatment,yield,survey) |>
   left_join(emms,by='treatment')
 
 
