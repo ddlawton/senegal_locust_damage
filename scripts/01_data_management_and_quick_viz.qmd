@@ -54,8 +54,6 @@ I just learned that the abundance and attack are relative to all grasshoppers ca
 - Gossas = 85% OSE
 
 
-
-
 ```{r pivoting and time management}
 
 # Using pivot_longer
