@@ -84,15 +84,15 @@ raw_yield_boxplot_plot <- dat_wo_s1 |>
 
 
 ggsave(raw_yield_farmer_plot,
-       file='output/raw_yield_plots/raw_yield_farmer_plot.png',
+       file='output/raw_yield_plots/raw_yield_farmer_plot.pdf',
        width=10,height=5,dpi=300)
 
 ggsave(raw_yield_plot,
-       file='output/raw_yield_plots/raw_yield_plot.png',
+       file='output/raw_yield_plots/raw_yield_plot.pdf',
        width=5,height=5,dpi=300)
 
 ggsave(raw_yield_boxplot_plot,
-       file='output/raw_yield_plots/raw_yield_boxplot_plot.png',
+       file='output/raw_yield_plots/raw_yield_boxplot_plot.pdf',
        width=5,height=5,dpi=300)
 
 
@@ -188,7 +188,7 @@ yield_anova_glmms_estimated_marginal_means_comparisons <- emms |>
 yield_anova_glmms_estimated_marginal_means_comparisons
 
 ggsave(yield_anova_glmms_estimated_marginal_means_comparisons,
-       file='output/modeled_yield_plots/yield_anova_glmms_estimated_marginal_means_comparisons.png',
+       file='output/modeled_yield_plots/yield_anova_glmms_estimated_marginal_means_comparisons.pdf',
        width=5,height=5,dpi=300)
 ```
 
@@ -218,15 +218,42 @@ farmer_yield_variance <- smooth_estimates(mod3) |>
     theme_pubr()
 
 ggsave(final_yield_model_est_marginal_means,
-       file='output/modeled_yield_plots/final_yield_model_est_marginal_means.png',
+       file='output/modeled_yield_plots/final_yield_model_est_marginal_means.pdf',
        width=5,height=5,dpi=300)
 
 ggsave(farmer_yield_variance,
-       file='output/modeled_yield_plots/farmer_yield_variance.png',
+       file='output/modeled_yield_plots/farmer_yield_variance.pdf',
        width=5,height=12,dpi=300)
 
 final_yield_model_est_marginal_means
 farmer_yield_variance
+
+```
+
+## Sticking with model 3
+
+```{r}
+
+options(digits = 5)
+summary(mod3)
+# Extract parametric and smooth terms
+param_table <- mod3 |> broom::tidy(parametric = TRUE)
+smooth_table <- mod3 |> 
+    broom::tidy(parametric = FALSE)
+
+# Standardize column names for merging
+smooth_table <- smooth_table |> 
+  rename(std.error = edf, estimate = ref.df) |>  # Renaming for consistency
+  mutate(std.error = NA)  # Adding missing column to match parametric table
+
+# Combine both tables
+combined_table <- bind_rows(param_table, smooth_table) |> 
+  mutate(type = c(rep("Parametric", nrow(param_table)), rep("Non-parametric", nrow(smooth_table))),
+    term = gsub('treatment|survey','',term),
+    across(where(is.numeric), ~ round(.,3)))
+
+write_csv(combined_table,file=here('output/model_summary_files/yield_fertilizer_model_results.csv'))
+
 
 ```
 

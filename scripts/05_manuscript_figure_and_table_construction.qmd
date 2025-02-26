@@ -67,9 +67,8 @@ pA <- all_missiom_data |>
         geom_point(position = position_jitterdodge(jitter.height=0,jitter.width=0.25)) +
     scale_color_manual(values = c('dark grey','black','dark green')) +
     theme_pubr()  + 
-    theme(legend.position="none") +
-    xlab('') +
-    ylab('Locust Count')
+    theme(legend.position="none")  +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2)))
 
 pB <- abun_mil_attack |>
     select(treatment,starts_with('abundance_')) |>
@@ -96,7 +95,7 @@ pC <- all_missiom_data |>
     theme_pubr()  + 
     theme(legend.position="none") +
     xlab('') +
-    ylab('Locust Damage')
+    ylab('locust Damage')
 
 pD <- abun_mil_attack |>
     select(treatment,starts_with('att_mil_')) |>
@@ -121,9 +120,10 @@ pE <- all_missiom_data |>
     theme_pubr()  + 
     theme(legend.position="none") +
     xlab('') +
-    ylab('Yield')
+    ylab('yield')
 
 pF <- yield |>
+    filter(model == 'GLMM') |>
     select(treatment,response,SE) |>
     distinct() |>
     group_by(treatment) |>
@@ -180,7 +180,8 @@ plots <- list(
     filter(survey != 's1') |>
     ggplot(aes(x = treatment, y = ose_num_adj)) +
     geom_jitter(width = 0.2, height = 0) +
-    labs(x = "treatment", y = "locust Count") +
+    labs(x = "treatment") +
+    ylab(bquote("Locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr(),
   
   "scatter_treatment_att_mil" = dat |>
@@ -202,25 +203,29 @@ plots <- list(
     ggplot(aes(x = ose_num, y = att_mil_adj)) +
     geom_point() +
     geom_smooth(method = "lm") +
-    labs(x = "locust count", y = "locust damage") +
+    labs(y = "locust damage") +
+    ylab(bquote("Locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr(),
 
   "scatter_ose_num_temp" = dat |>
     ggplot(aes(y = ose_num_adj, x = temp_c)) +
     geom_point() +
-    labs(x = "temperature (°C)", y = "locust Count") +
+    labs(x = "temperature (°C)") +
+    ylab(bquote("Locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr(),
 
   "scatter_ose_num_humidity" = dat |>
     ggplot(aes(y = ose_num_adj, x = humidity_percent)) +
     geom_point() +
-    labs(x = "humidity (%)", y = "locust Count") +
+    labs(x = "humidity (%)") +
+    ylab(bquote("Locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr(),
 
   "scatter_ose_num_ground_cover" = dat |>
     ggplot(aes(y = ose_num_adj, x = ground_cover_percent)) +
     geom_point() +
-    labs(x = "ground cover (%)", y = "locust count") +
+    labs(x = "ground cover (%)") +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr(),
 
   "scatter_ose_num_survey_village" = dat  |>
@@ -228,7 +233,8 @@ plots <- list(
     ggplot(aes(y = ose_num_adj, x = survey, color = village)) +
     geom_jitter(width = 0.3, height = 0) +
     MetBrewer::scale_color_met_d(name = "Degas") +
-    labs(x = "survey", y = "locust Count", color = "village") +
+    labs(x = "survey", color = "village") +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr(),
 
   "scatter_att_mil_survey_village" = dat |>

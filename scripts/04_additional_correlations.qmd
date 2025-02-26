@@ -5,9 +5,11 @@ format: html
 editor: source
 ---
 
-## Question 3: Does *O. senegalensis* abundance and attack influence yield across treatment
+## Supplementary Question: Does *O. senegalensis* abundance influence yield across treatment
 
-Okay so this is a tricky question to ask due to the co-correlation between treatment, yield, and locust abundance. Fertilization obviously influences both yield and locust abundance/attack. So how do we model the effect locusts have on yield *independently*?
+The goal here is to see the effect of locust count on end of season year. 
+
+I will try to go across survey (locust sampling periods) and fertilizer treatment
 
 
 ## Library import and reading in data
@@ -42,49 +44,58 @@ here::i_am('README.md')
 ```
 
 
+## Correlating yield and locust count
+
+So Im thinking this formula:
+
+yield ~ ose_num_adj + (1|survey)
+
+where `ose_num_adj` is locust count (fixed continuous variable) and `survey` as a random effect to help with puesdoreplication
+
 ```{r}
 dat <- read_csv('data/analysis_ready_data.csv')
-dat_just_s3 <- dat |> 
-    drop_na(yield)
 
-dat_just_s3$yield
+yield_locust_dat <- dat |> 
+  select(farmer_num,village,treatment,att_mil_adj,yield,ose_num_adj,survey) |> 
+  group_by(village,farmer_num,treatment) |>
+  fill(yield,.direction='up') |> 
+  filter(!(survey %in% c('s1','s4'))) |> 
+  drop_na(yield,ose_num_adj) 
+
 ```
 
 
-lets demonstrate this co-correlation
+lets demonstrate the correlation between yield and locust count
+
+I've removed s1 because its before fertilization.
 
 ```{r co-correlation between treatment, yield, and locust abundance/attack}
 
 # lcoust abundance/attack and yield correlation
 
-raw_ose_count_yield_correlation <- dat_just_s3 |>
-  ggplot(aes(x=ose_num_adj,y=yield)) +
+raw_ose_count_yield_correlation <- yield_locust_dat |>
+  ggplot(aes(x=ose_num_adj,y=yield,color=survey)) +
     geom_point() +
     theme_pubr() +
-    xlab("locust count")
-
-raw_ose_damage_yield_correlation <- dat_wo_m1 |>
-  ggplot(aes(x=att_mil_adj,y=yield)) +
-    geom_point() +
-    theme_pubr() +
-    xlab('locust damage')
+    xlab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
+    scale_color_met_d(name='Demuth')
 
 
 # locust abundance and attack correlation
 
-ose_count_damage_correlation <- dat |>
-  ggplot(aes(x=ose_num,y=att_mil_adj,color=treatment)) +
+ose_count_damage_correlation <- yield_locust_dat |>
+  ggplot(aes(x=ose_num_adj,y=att_mil_adj,color=treatment)) +
     geom_point() +
     theme_pubr() +
     scale_color_met_d(name='Degas')  +
-    xlab("locust count")  +
+    xlab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
     ylab("locust damage")
 
 
 
 # yield, abudance and attack with treatment:
 
-p1 <- dat_wo_m1 |>
+p1 <- yield_locust_dat |>
   ggplot(aes(x=treatment,y=yield,color=village)) +
     geom_jitter(width=0.3,height=0) +
     theme_pubr() +
@@ -92,15 +103,15 @@ p1 <- dat_wo_m1 |>
     ylab("yield") +
     scale_color_met_d(name='Demuth')
 
-p2 <- dat_wo_m1 |>
+p2 <- yield_locust_dat |>
   ggplot(aes(x=treatment,y=ose_num_adj,color=village)) +
     geom_jitter(width=0.3,height=0)  +
     theme_pubr() +
     xlab("") +
-    ylab("locust count") +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
     scale_color_met_d(name='Demuth')
 
-p3 <- dat_wo_m1 |>
+p3 <- yield_locust_dat |>
   ggplot(aes(x=treatment,y=att_mil_adj,color=village)) +
     geom_jitter(width=0.3,height=0)  +
     theme_pubr()  +
@@ -124,36 +135,259 @@ ggsave(ose_count_damage_correlation,
 
 ```
 
-okay I'm not totally confident to have a model where yield, treatment, and locust abundance/attack are all included. I think theres a lot of co-correlations. So, lets just focus on locust abundance/attack and yield directly. Here is the starting of my modeling but I didnt go further....
+
+### modeling yield x locust count
+
+I am going to now model yield
+
 
 ```{r locust abundance/attack and yield modeling}
 
-dat_wo_m1 <- dat_wo_m1 |>
-  mutate(mission = factor(mission))
+yield_locust_dat <- yield_locust_dat |>
+  mutate(survey = factor(survey),
+    treatment = factor(treatment),
+    village = factor(village),
+    farmer_num = factor(farmer_num))
 
-yield_locust_mod0 <- gam(yield ~ 1,data=dat_wo_m1,family=tw())
+yield_locust_mod0 <- gam(yield ~ 1,data=yield_locust_dat,family=tw())
 
-yield_locust_mod1 <- gam(yield ~ ose_num_adj,data=dat_wo_m1,family=tw())
+yield_locust_mod1 <- gam(yield ~ 
+    s(ose_num_adj,k=25),
+  select=TRUE,
+  data=yield_locust_dat,family=tw())
 
-# yield_locust_mod2 <- gam(yield ~ ose_num_adj +
-#                              s(mission,bs='re'),
-#                          data=dat_wo_m1,family=tw())
+yield_locust_mod2 <- gam(yield ~ 
+    s(ose_num_adj,k=25) + 
+    s(farmer_num,bs=c('re')),
+  select=TRUE,
+  data=yield_locust_dat,family=tw())
 
-summary(yield_locust_mod1)
-draw(yield_locust_mod1,parametric = TRUE)
+
+# AIC model selection criteria 
+
+AIC(yield_locust_mod0,yield_locust_mod1,yield_locust_mod2) |>
+  as_tibble(rownames = 'model') |>
+  mutate(deltaAIC = AIC - min(AIC))
+
+# model fit diagnostics 
+
+appraise(yield_locust_mod2)
+
 summary(yield_locust_mod2)
+draw(yield_locust_mod2)
+
 
 ```
 
 
-## Saving to disk for figure and table construction:
+### saving model summary to csv
+
+
+```{r}
+
+summary(yield_locust_mod2)
+# Extract parametric and smooth terms
+param_table <- yield_locust_mod2 |> broom::tidy(parametric = TRUE)
+smooth_table <- yield_locust_mod2 |> 
+    broom::tidy(parametric = FALSE)
+
+# Standardize column names for merging
+smooth_table <- smooth_table |> 
+  rename(std.error = edf, estimate = ref.df) |>  # Renaming for consistency
+  mutate(std.error = NA)  # Adding missing column to match parametric table
+
+# Combine both tables
+combined_table <- bind_rows(param_table, smooth_table) |> 
+  mutate(type = c(rep("Parametric", nrow(param_table)), rep("Non-parametric", nrow(smooth_table))),
+    term = gsub('treatment|survey','',term),
+    across(where(is.numeric), ~ round(.,3)))
+
+write_csv(combined_table,file=here('output/model_summary_files/yield_locust_abundance_model_results.csv'))
+
+
+```
+
+
+
+### creating modeled estimates, ploting, and save to disk
+
+```{r}
+
+mod2_ests <- gratia::smooth_estimates(yield_locust_mod2)
+
+
+raw_yield_locust_count_plot <- yield_locust_dat |>
+  ggplot(aes(x=ose_num_adj,y=yield)) +
+    geom_point() +
+    theme_pubr() +
+    ylab('Yield (kg/ha)') +
+    xlab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
+    scale_color_met_d(name='Demuth')
+
+      
+
+
+modeled_yield_locust_count_plot <- yield_locust_plot <- mod2_ests |>
+    mutate(adjusted_estimate = .estimate) |> 
+    filter(.smooth == 's(ose_num_adj)') |>
+    ggplot(aes(x=ose_num_adj)) + 
+      geom_ribbon(aes(ymin=adjusted_estimate - .se, ymax=adjusted_estimate + .se),alpha=.2) +
+      geom_line(aes(y = adjusted_estimate),size=1) +
+      geom_rug(data = yield_locust_dat,aes(x=ose_num_adj)) +
+      theme_pubr() +
+      ylab('Yield (partial estimates)')+
+      xlab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
+      ylim(-1,1)
+
+yield_combined_plots <- raw_yield_locust_count_plot + modeled_yield_locust_count_plot + plot_annotation(tag_levels = 'a')
+
+ggsave(yield_combined_plots,
+       file='output/locust_yield_plots/modeled_locust_yield_plot.png',
+       width=10,height=5,dpi=300)
+
+ggsave(yield_combined_plots,
+      file='output/locust_yield_plots/modeled_locust_yield_plot.pdf',
+      width=10,height=5,dpi=300)
+
+```
+
+## locust count to temperature
+
+
+```{r}
+
+locust_temp_dat <- dat |> 
+  select(farmer_num,village,treatment,temp_c,ose_num_adj,survey) |>
+  filter(survey != 's4') |>
+  drop_na(ose_num_adj,temp_c) |>
+  mutate(survey = factor(survey))
+
+
+```
+
+
+```{r}
+
+locust_temp_dat
+
+temp_locust_mod0 <- gam(ose_num_adj ~ 1,
+  data=locust_temp_dat,family=tw())
+
+temp_locust_mod1 <- gam(ose_num_adj ~ 
+    s(temp_c,k=25),
+  select=TRUE,
+  data=locust_temp_dat,family=tw())
+
+
+# AIC model selection criteria 
+
+AIC(temp_locust_mod0,temp_locust_mod1,temp_locust_mod2) |>
+  as_tibble(rownames = 'model') |>
+  mutate(deltaAIC = AIC - min(AIC))
+
+summary(temp_locust_mod1)
+appraise(temp_locust_mod1)
+
+```
+
+there is not a significant relationship between locust count and temperature
+
+```{r}
+
+
+raw_temp_locust_plot <- locust_temp_dat |>
+  ggplot(aes(x=temp_c,y=ose_num_adj)) +
+    geom_point()  +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
+    xlab('temperature (C)') +
+    theme_pubr() 
+ 
+temp_mod_resuls <- emmeans::emmeans(temp_locust_mod2,~temp_c)
+
+modeled_temp_locust_plot <- temp_mod_resuls |>
+  filter(.smooth == 's(temp_c)') |>
+  ggplot(aes(x=temp_c)) + 
+    geom_ribbon(aes(ymin=.estimate - .se, ymax = .estimate + .se),alpha=.2) +
+    geom_line(aes(y = .estimate),size=1) +
+    geom_rug(data = locust_temp_dat,aes(x=temp_c)) +
+    theme_pubr() +
+    xlab('temperature (C)') +
+    ylab('locust count (partial estimates)') +
+    ylim(-0.5,0.5)
+
+temp_combined_plots <- raw_temp_locust_plot + modeled_temp_locust_plot  + plot_annotation(tag_levels = 'a')
+
+ggsave(temp_combined_plots,
+       file='output/locust_yield_plots/modeled_locust_temp_plot.png',
+       width=10,height=5,dpi=300)
+
+```
+
+## Temperature and fertilizer plots
+
+
+```{r}
+
+temp_fert_dat <- dat |>
+  select(farmer_num,village,survey,treatment,temp_c) |>
+  filter(survey != 's4') |>
+  drop_na()
+
+temp_fert_plot <- temp_fert_dat |>
+  ggplot(aes(x=treatment,y=temp_c,color=survey)) +
+    geom_jitter(width=0.2) +
+    theme_pubr() +
+    scale_color_met_d(name = 'Egypt') +
+    xlab('') +
+    ylab('temperature (C)')
+
+
+ggsave(temp_fert_plot,
+  file=here('output/raw_visualization/temperature_fertilizer_plot.png'),
+  width = 5,
+  height = 5,
+  dpi = 300)
+
+```
+
+## Village temperature and precipitation data
+
+
+lets read in the data and manage it slightly
+
+```{r}
+weather_dat <- read_csv(here('data/processed/ERA5_Weather_Data_Per_Point.csv'),show_col_types = FALSE)
+
+weather_dat2 <- weather_dat |>
+  mutate(location = case_when(location == 'Point1' ~ 'Gniby',
+    location == 'Point2' ~ 'Gossas'),
+    doy = yday(date)) |>
+  select(location,doy,maximum_2m_air_temperature,mean_2m_air_temperature,minimum_2m_air_temperature,total_precipitation) |>
+  rename(max_temp = maximum_2m_air_temperature,
+    mean_temp = mean_2m_air_temperature,
+    min_temp = minimum_2m_air_temperature,
+    total_precip = total_precipitation)  %>%
+  group_by(location) %>%
+  arrange(doy, .by_group = TRUE) %>%
+  mutate(cum_precip = cumsum(total_precip)) |>
+  ungroup()
+
+```
+
+now creating temperature and preciptation plots
 
 
 
 ```{r}
 
-write.csv(locust_dat,file=here('data/processed/locust_abundance_and_att_mil_raw_and_model_data.csv'))
 
-
+weather_dat2 |>
+  select(location,doy,max_temp,mean_temp,min_temp) |>
+  pivot_longer(!c(location,doy)) |>
+  mutate(value = value - 273.15) |>
+  ggplot(aes(x=doy,y=value,color = name,linetype=location)) +
+    geom_line() +
+    ggpubr::theme_pubr(legend = 'bottom') +
+    MetBrewer::scale_colour_met_d(names='Peru1')
 
 ```

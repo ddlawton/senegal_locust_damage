@@ -51,7 +51,7 @@ Lets also get a time of day measure as this can affect locust abundances greatly
 
 dat <- read_csv('data/analysis_ready_data.csv') |>
   mutate(hour = lubridate::hour(datetime)) |>
-  filter(mission != 'm1')
+  filter(survey != 's1')
 
 ```
 
@@ -61,51 +61,67 @@ dat <- read_csv('data/analysis_ready_data.csv') |>
 # List of plots with their respective file paths
 plot_list <- list(
   raw_ose_count_treatment = dat |>
+    select(village,farmer_num,treatment,ose_num_adj) |>
+    distinct() |>
     ggplot(aes(x = treatment, y = ose_num_adj)) +
     geom_jitter(width = 0.2) +
-    ylab("locust count")  +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr(),
   
   raw_ose_count_humidity_percent = dat |>
+    select(village,farmer_num,treatment,ose_num_adj,humidity_percent) |>
+    distinct() |>
     ggplot(aes(x = humidity_percent, y = ose_num_adj)) +
     geom_jitter(width = 0.2) +
-    ylab("locust count") +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr(),
   
   raw_ose_count_ground_cover_percent = dat |>
+    select(village,farmer_num,treatment,ose_num_adj,ground_cover_percent) |>
+    distinct() |>
     ggplot(aes(x = ground_cover_percent, y = ose_num_adj)) +
-    geom_jitter(width = 0.2)  +
-    ylab("locust count") +
+    geom_jitter(width = 0.2) +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr(),
   
   raw_ose_count_hour = dat |>
+    select(village,farmer_num,treatment,ose_num_adj,hour) |>
+    distinct() |>
     ggplot(aes(x = hour, y = ose_num_adj)) +
     geom_jitter(width = 0.2) +
-    ylab("locust count") +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr(),
   
   raw_millet_attack_treatment = dat |>
-    ggplot(aes(x = treatment, y = att_mil)) +
+    select(village,farmer_num,treatment,att_mil_adj) |>
+    distinct() |>
+    ggplot(aes(x = treatment, y = att_mil_adj)) +
     geom_jitter(width = 0.2) +
-    ylab("locust count") +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr(),
   
   raw_millet_attack_humidity_percent = dat |>
-    ggplot(aes(x = humidity_percent, y = att_mil)) +
+    select(village,farmer_num,treatment,humidity_percent,att_mil_adj) |>
+    distinct() |>
+    ggplot(aes(x = humidity_percent, y = att_mil_adj)) +
     geom_point()  +
-    ylab("locust count")  +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr(),
   
   raw_millet_attack_ground_cover_percent = dat |>
-    ggplot(aes(x = ground_cover_percent, y = att_mil)) +
+    select(village,farmer_num,treatment,ground_cover_percent,att_mil_adj) |>
+    distinct() |>
+    ggplot(aes(x = ground_cover_percent, y = att_mil_adj)) +
     geom_point() +
-    ylab("locust count")  +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr(),
   
-  raw_millet_attack_hour = dat |>
-    ggplot(aes(x = hour, y = att_mil)) +
+  raw_millet_attack_hour = dat  |>
+    select(village,farmer_num,treatment,hour,att_mil_adj) |>
+    distinct() |>
+    ggplot(aes(x = hour, y = att_mil_adj)) +
     geom_point() +
-    ylab("locust count") +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr()
 )
 
@@ -138,31 +154,41 @@ So the pattern isnt as strong as yield, but I think there is still something the
 
 # Broken out into village and farmer
 
-ose_number_village_treatment <- dat |>
+ose_number_village_treatment <- dat  |>
+  select(village,farmer_num,treatment,ose_num_adj) |>
+  distinct() |>
   ggplot(aes(x=treatment,y=ose_num_adj,color=village)) +
     geom_jitter(width=0.2) +
     scale_color_met_d(name='Demuth') +
-    ylab("locust count") +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr()
 
 
-ose_number_village_mission <- dat |>
+ose_number_village_survey <- dat |>
+  filter(survey != 's1') |>
+  select(village,survey,farmer_num,treatment,ose_num_adj) |>
+  distinct() |>
+  drop_na() |>
   ggplot(aes(x=treatment,y=ose_num_adj,color=village,group=farmer_num)) +
     geom_line(alpha=0.5) +
     geom_point(size=2) +
     scale_color_met_d(name='Demuth') +
-    ylab("locust count") +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr() +
-    facet_wrap(~mission,ncol=2)
+    facet_wrap(~survey)
 
-# What about across mission?
 
-ose_number_treatment_village_mission <- dat |>
-  ggplot(aes(x=mission,y=ose_num_adj,color=village,group=farmer_num)) +
+# What about across survey?
+
+ose_number_treatment_village_survey <- dat |>
+  select(village,survey,farmer_num,treatment,ose_num_adj) |>
+  distinct() |>
+  drop_na() |>
+  ggplot(aes(x=survey,y=ose_num_adj,color=village,group=farmer_num)) +
     geom_line(alpha=0.5) +
     geom_point(size=2) +
     scale_color_met_d(name='Demuth') +
-    ylab("locust count") +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr() +
     facet_wrap(~treatment)
 
@@ -172,17 +198,17 @@ ggsave(ose_number_village_treatment,
        file='output/ose_treatment_plots/ose_number_village_treatment.png',
        width=5,height=5,dpi=300)
 
-ggsave(ose_number_village_mission,
-       file='output/ose_treatment_plots/ose_number_village_mission.png',
-       width=10,height=10,dpi=300)
+ggsave(ose_number_village_survey,
+       file='output/ose_treatment_plots/ose_number_village_survey.png',
+       width=10,height=5,dpi=300)
 
-ggsave(ose_number_treatment_village_mission,
-       file='output/ose_treatment_plots/ose_number_treatment_village_mission.png',
+ggsave(ose_number_treatment_village_survey,
+       file='output/ose_treatment_plots/ose_number_treatment_village_survey.png',
        width=10,height=5,dpi=300)
 
 
 ose_number_village_treatment
-ose_number_village_mission
+ose_number_village_survey
 ose_number_treatment_village_mission
 
 ```
@@ -197,38 +223,62 @@ dat <- dat |>
   mutate(across(where(is.character),~as.factor(.)))
 
 
-m1_exclude <- dat |>
-  filter(mission != 'm1')
+s1_exclude <- dat |>
+  filter(survey != 's1')
 
 
 ose_num_mod0 <- gam(ose_num_adj ~ 1,
-            data=m1_exclude,family = tw()) # null model
+            data=s1_exclude,family = tw()) # null model
 
 ose_num_mod1 <- gam(ose_num_adj ~ treatment,
-            data=m1_exclude,family = tw()) # basic ANOVA
+            data=s1_exclude,family = tw()) # basic ANOVA
 
 ose_num_mod2 <- gam(ose_num_adj ~ treatment + 
-              s(mission,bs='re') +
+              s(survey,bs='re') +
               s(village,bs='re'),
-            data=m1_exclude,family = tw())
+            data=s1_exclude,family = tw())
 
 ose_num_mod3 <- gam(ose_num_adj ~ treatment +
-              s(mission,bs='re') +
+              s(survey,bs='re') +
               s(farmer_num,bs='re'),
-            data=m1_exclude,family = tw())
+            data=s1_exclude,family = tw())
 
 ose_num_mod4 <- gam(ose_num_adj ~ treatment + 
-              mission +
+              survey +
               s(village,bs='re') + 
               s(farmer_num,bs='re'),
-            data=m1_exclude,family = tw())
+            data=s1_exclude,family = tw())
 
 AIC(ose_num_mod0,ose_num_mod1,ose_num_mod2,ose_num_mod3,ose_num_mod4)
 
 summary(ose_num_mod4)
 ```
 
-## locust abundance and millet attacl
+### creating table output of model results
+
+```{r}
+
+# Extract parametric and smooth terms
+param_table <- ose_num_mod4 |> broom::tidy(parametric = TRUE)
+smooth_table <- ose_num_mod4 |> broom::tidy(parametric = FALSE)
+
+# Standardize column names for merging
+smooth_table <- smooth_table |> 
+  rename(std.error = edf, estimate = ref.df) |>  # Renaming for consistency
+  mutate(std.error = NA)  # Adding missing column to match parametric table
+
+# Combine both tables
+combined_table <- bind_rows(param_table, smooth_table) |> 
+  mutate(type = c(rep("Parametric", nrow(param_table)), rep("Non-parametric", nrow(smooth_table))),
+    term = gsub('treatment|survey','',term),
+    across(where(is.numeric), ~ round(.,3)))
+
+write_csv(combined_table,file=here('output/model_summary_files/locust_count_treatment_model_results.csv'))
+
+```
+
+
+## locust abundance and millet attack
 Now lets do the same thing for millet attack:
 
 ```{r breaking plots down by village farmer and mission for locust abundance}
@@ -243,17 +293,19 @@ dat |>
 
 
 dat |>
+  filter(survey != 's4') |>
   ggplot(aes(x=treatment,y=att_mil_adj,color=village,group=farmer_num)) +
     geom_line(alpha=0.5) +
     geom_point(size=2) +
     scale_color_met_d(name='Demuth') +
     theme_pubr() +
-    facet_wrap(~mission,ncol=2)
+    facet_wrap(~survey,ncol=2)
 
-# What about across mission?
+# What about across survey?
 
 dat |>
-  ggplot(aes(x=mission,y=att_mil_adj,color=village,group=farmer_num)) +
+  filter(survey != 's4') |>
+  ggplot(aes(x=survey,y=att_mil_adj,color=village,group=farmer_num)) +
     geom_line(alpha=0.5) +
     geom_point(size=2) +
     scale_color_met_d(name='Demuth') +
@@ -264,7 +316,8 @@ dat |>
 # Okay what about yield
 
 dat |>
-  ggplot(aes(x=mission,y=att_mil_adj,color=village,group=farmer_num)) +
+  filter(survey != 's4') |>
+  ggplot(aes(x=survey,y=att_mil_adj,color=village,group=farmer_num)) +
     geom_line(alpha=0.5) +
     geom_point(size=2) +
     scale_color_met_d(name='Demuth') +
@@ -277,32 +330,58 @@ dat |>
 
 
 att_mil_mod0 <- gam(att_mil_adj ~ 1,
-            data=dat,family = tw()) # null model
+            data=s1_exclude,family = tw()) # null model
 
 att_mil_mod1 <- gam(att_mil_adj ~ treatment,
-            data=dat,family = tw()) # basic ANOVA
+            data=s1_exclude,family = tw()) # basic ANOVA
 
 att_mil_mod2 <- gam(att_mil_adj ~ treatment + 
-              s(mission,bs='re') +
+              s(survey,bs='re') +
               s(village,bs='re'),
-            data=dat,family = tw())
+            data=s1_exclude,family = tw())
 
 att_mil_mod3 <- gam(att_mil_adj ~ treatment +
-              s(mission,bs='re') +
+              s(survey,bs='re') +
               s(farmer_num,bs='re'),
-            data=dat,family = tw())
+            data=s1_exclude,family = tw())
 
 att_mil_mod4 <- gam(att_mil_adj ~ treatment + 
-              s(mission,bs='re') +
+              s(survey,bs='re') +
               s(village,bs='re') + 
               s(farmer_num,bs='re'),
-            data=dat,family = tw())
+            data=s1_exclude,family = tw())
 
 AIC(att_mil_mod0,att_mil_mod1,att_mil_mod2,att_mil_mod3,att_mil_mod4)
 summary(att_mil_mod4)
 appraise(att_mil_mod1)
 ```
 
+
+
+### saving millet attack model summary
+
+```{r}
+
+# Extract parametric and smooth terms
+param_table <- att_mil_mod4 |> broom::tidy(parametric = TRUE)
+smooth_table <- att_mil_mod4 |> broom::tidy(parametric = FALSE)
+
+# Standardize column names for merging
+smooth_table <- smooth_table |> 
+  rename(std.error = edf, estimate = ref.df) |>  # Renaming for consistency
+  mutate(std.error = NA)  # Adding missing column to match parametric table
+
+# Combine both tables
+combined_table <- bind_rows(param_table, smooth_table) |> 
+  mutate(type = c(rep("Parametric", nrow(param_table)), rep("Non-parametric", nrow(smooth_table))),
+    term = gsub('treatment','',term),
+    across(where(is.numeric), ~ round(.,3)))
+
+write_csv(combined_table,file=here('output/model_summary_files/locust_attack_treatment_model_results.csv'))
+
+```
+
+## plotting model estimates
 
 
 There are some issues with the model diagnostics, but not too bad. Lets summarize this all up:
@@ -358,7 +437,7 @@ summary(att_mil_mod4)
 ```{r}
 
 locust_dat <- dat |>
-  select(farmer_num,village,treatment,ose_num_adj,att_mil_adj,mission) |>
+  select(farmer_num,village,treatment,ose_num_adj,att_mil_adj,survey) |>
   left_join(ose_num_emms,by='treatment') |>
   rename(abundance_response = response,abundance_se = SE,abundance_df = df, abundance_lower.CL = lower.CL, abundance_upper.CL = upper.CL) |>
   left_join(att_mil_emms,by='treatment') |>
