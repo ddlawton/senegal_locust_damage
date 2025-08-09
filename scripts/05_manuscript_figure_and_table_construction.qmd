@@ -68,7 +68,7 @@ pA <- all_missiom_data |>
     scale_color_manual(values = c('dark grey','black','dark green')) +
     theme_pubr()  + 
     theme(legend.position="none")  +
-    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2)))
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^-2)))
 
 pB <- abun_mil_attack |>
     select(treatment,starts_with('abundance_')) |>
@@ -143,8 +143,6 @@ pF <- yield |>
  ```
 
 
-
-
  ```{r}
  
  design <- ("
@@ -161,7 +159,128 @@ ggsave(manuscript_figure,file=here('output/panel_1.pdf'),width=8,height=8)
  ```
 
 
- # supplementary figures
+
+## option 2: both model and raw data at the same scale
+
+# yield, attack, and abundance panel
+ - panel a = raw locust count through survey
+ - panel b = modeled locust count through survey
+ - panel c = raw locust damage through survey
+ - panel d = modeled locust damage through survey
+ - panel e = raw yield between treatment
+ - panel f = modeled yield between treatment
+
+
+ ```{r}
+
+pA_opt2 <- all_missiom_data |>
+    select(village,treatment,ose_num_adj,survey) |>
+    mutate(treatment = factor(case_when(survey == 's1' ~ 'PT', TRUE ~ treatment),levels=c('PT','control','fertilized')),
+        survey = case_when(survey == 's1' ~ 'PT',survey == 's2' ~ 'S1',survey == 's3' ~ 'S2')) |>
+    drop_na(survey) |>
+    ggplot(aes(x=survey,y=ose_num_adj,color=treatment)) +
+        geom_point(position = position_jitterdodge(jitter.height=0,jitter.width=0.25)) +
+    scale_color_manual(values = c('dark grey','black','dark green')) +
+    theme_pubr()  + 
+    theme(legend.position="none")  +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^-2))) +
+    ylim(0,90)
+
+pB_opt2 <- abun_mil_attack |>
+    select(treatment,starts_with('abundance_')) |>
+    distinct() |>
+    ggplot(aes(x=treatment,y=abundance_response,color=treatment)) +
+      geom_point(size=2) +
+      geom_errorbar(aes(ymin=abundance_response-abundance_se,ymax=abundance_response+abundance_se),width=0) +
+      scale_color_manual(values = c('black','dark green')) +
+      theme_pubr()  + 
+      theme(legend.position="none") +
+      xlab('') +
+      ylab('') +
+      theme(axis.text.x=element_blank())  +
+      ylim(0,90)
+
+
+pC_opt2 <- all_missiom_data |>
+    select(village,treatment,att_mil_adj,survey) |>
+    mutate(treatment = factor(case_when(survey == 's1' ~ 'PT', TRUE ~ treatment),levels=c('PT','control','fertilized')),
+        survey = case_when(survey == 's1' ~ 'PT',survey == 's2' ~ 'S1',survey == 's3' ~ 'S3')) |>
+    drop_na(survey) |>
+    ggplot(aes(x=survey,y=att_mil_adj,color=treatment)) +
+        geom_point(position = position_jitterdodge(jitter.height=0,jitter.width=0.25)) +
+    scale_color_manual(values = c('dark grey','black','dark green')) +
+    theme_pubr()  + 
+    theme(legend.position="none") +
+    xlab('') +
+    ylab('locust Damage') + 
+    ylim(0,0.5)
+
+pD_opt2 <- abun_mil_attack |>
+    select(treatment,starts_with('att_mil_')) |>
+    distinct() |>
+    ggplot(aes(x=treatment,y=att_mil_response,color=treatment)) +
+      geom_point(size=2) +
+      geom_errorbar(aes(ymin=att_mil_response-att_mil_se,ymax=att_mil_response+att_mil_se),width=0) +
+      scale_color_manual(values = c('black','dark green')) +
+      theme_pubr()  + 
+      theme(legend.position="none") +
+      xlab('') +
+      ylab('') +
+      theme(axis.text.x=element_blank()) + 
+      ylim(0,0.5)
+
+pE_opt2 <- all_missiom_data |>
+    select(village,treatment,yield) |>
+    distinct() |>
+    mutate(treatment = factor(treatment,levels=c('PT','control','fertilized'))) |>
+    ggplot(aes(x=treatment,y=yield,color=treatment)) +
+        geom_point(position = position_jitterdodge(jitter.height=0,jitter.width=0.25)) +
+    scale_color_manual(values = c('black','dark green')) +
+    theme_pubr()  + 
+    theme(legend.position="none") +
+    xlab('') +
+    ylab('yield')  + 
+    ylim(0,2100)
+
+pF_opt2 <- yield |>
+    filter(model == 'GLMM') |>
+    select(treatment,response,SE) |>
+    distinct() |>
+    group_by(treatment) |>
+    mutate(reponse = mean(response),SE = mean(SE)) |>
+    ggplot(aes(x=treatment,y=reponse,color=treatment)) +
+      geom_point(size=2) +
+      geom_errorbar(aes(ymin=reponse-SE,ymax=reponse+SE),width=0) +
+      scale_color_manual(values = c('black','dark green')) +
+      theme_pubr()  + 
+      theme(legend.position="none") +
+      xlab('') +
+      ylab('')  + 
+      ylim(0,2100)
+
+
+
+
+ ```
+
+
+ ```{r}
+ 
+ design <- ("
+  1#2
+  3#4
+  5#6
+")
+
+manuscript_figure_opt2 <- pA_opt2 + pB_opt2 + pC_opt2 + pD_opt2 + pE_opt2 + pF_opt2 + plot_layout(design = design)
+
+ggsave(manuscript_figure_opt2,file=here('output/panel_1_opt2.png'),width=8,height=8)
+
+
+ ```
+
+
+# supplementary figures
 
 
 ## saving out as png
@@ -181,7 +300,7 @@ plots <- list(
     ggplot(aes(x = treatment, y = ose_num_adj)) +
     geom_jitter(width = 0.2, height = 0) +
     labs(x = "treatment") +
-    ylab(bquote("Locust count" ~ (individuals %*% 100 ~ m^2))) +
+    ylab(bquote("Locust count" ~ (individuals %*% 100 ~ m^-2))) +
     theme_pubr(),
   
   "scatter_treatment_att_mil" = dat |>
@@ -204,28 +323,28 @@ plots <- list(
     geom_point() +
     geom_smooth(method = "lm") +
     labs(y = "locust damage") +
-    ylab(bquote("Locust count" ~ (individuals %*% 100 ~ m^2))) +
+    ylab(bquote("Locust count" ~ (individuals %*% 100 ~ m^-2))) +
     theme_pubr(),
 
   "scatter_ose_num_temp" = dat |>
     ggplot(aes(y = ose_num_adj, x = temp_c)) +
     geom_point() +
     labs(x = "temperature (°C)") +
-    ylab(bquote("Locust count" ~ (individuals %*% 100 ~ m^2))) +
+    ylab(bquote("Locust count" ~ (individuals %*% 100 ~ m^-2))) +
     theme_pubr(),
 
   "scatter_ose_num_humidity" = dat |>
     ggplot(aes(y = ose_num_adj, x = humidity_percent)) +
     geom_point() +
     labs(x = "humidity (%)") +
-    ylab(bquote("Locust count" ~ (individuals %*% 100 ~ m^2))) +
+    ylab(bquote("Locust count" ~ (individuals %*% 100 ~ m^-2))) +
     theme_pubr(),
 
   "scatter_ose_num_ground_cover" = dat |>
     ggplot(aes(y = ose_num_adj, x = ground_cover_percent)) +
     geom_point() +
     labs(x = "ground cover (%)") +
-    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^-2))) +
     theme_pubr(),
 
   "scatter_ose_num_survey_village" = dat  |>
@@ -234,7 +353,7 @@ plots <- list(
     geom_jitter(width = 0.3, height = 0) +
     MetBrewer::scale_color_met_d(name = "Degas") +
     labs(x = "survey", color = "village") +
-    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^-2))) +
     theme_pubr(),
 
   "scatter_att_mil_survey_village" = dat |>

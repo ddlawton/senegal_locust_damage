@@ -56,7 +56,7 @@ where `ose_num_adj` is locust count (fixed continuous variable) and `survey` as 
 dat <- read_csv('data/analysis_ready_data.csv')
 
 yield_locust_dat <- dat |> 
-  select(farmer_num,village,treatment,att_mil_adj,yield,ose_num_adj,survey) |> 
+  select(farmer_num,village,treatment,att_mil_adj,att_mil,yield,ose_num_adj,survey) |> 
   group_by(village,farmer_num,treatment) |>
   fill(yield,.direction='up') |> 
   filter(!(survey %in% c('s1','s4'))) |> 
@@ -162,19 +162,27 @@ yield_locust_mod2 <- gam(yield ~
   select=TRUE,
   data=yield_locust_dat,family=tw())
 
+yield_locust_mod3 <- gam(yield ~ 
+    s(ose_num,k=25) + 
+    s(farmer_num,bs=c('re')) + 
+    s(treatment,bs=c('re')),
+  select=TRUE,
+  data=yield_locust_dat,family=tw())
+
 
 # AIC model selection criteria 
 
-AIC(yield_locust_mod0,yield_locust_mod1,yield_locust_mod2) |>
+AIC(yield_locust_mod0,yield_locust_mod1,yield_locust_mod2,yield_locust_mod3) |>
   as_tibble(rownames = 'model') |>
   mutate(deltaAIC = AIC - min(AIC))
 
 # model fit diagnostics 
 
-appraise(yield_locust_mod2)
+appraise(yield_locust_mod3)
 
 summary(yield_locust_mod2)
-draw(yield_locust_mod2)
+summary(yield_locust_mod3)
+draw(yield_locust_mod3)
 
 
 ```
@@ -227,7 +235,7 @@ raw_yield_locust_count_plot <- yield_locust_dat |>
       
 
 
-modeled_yield_locust_count_plot <- yield_locust_plot <- mod2_ests |>
+modeled_yield_locust_count_plot <- mod2_ests |>
     mutate(adjusted_estimate = .estimate) |> 
     filter(.smooth == 's(ose_num_adj)') |>
     ggplot(aes(x=ose_num_adj)) + 
@@ -242,11 +250,11 @@ modeled_yield_locust_count_plot <- yield_locust_plot <- mod2_ests |>
 yield_combined_plots <- raw_yield_locust_count_plot + modeled_yield_locust_count_plot + plot_annotation(tag_levels = 'a')
 
 ggsave(yield_combined_plots,
-       file='output/locust_yield_plots/modeled_locust_yield_plot.png',
+       file='output/locust_yield_plots/ose_num.png',
        width=10,height=5,dpi=300)
 
 ggsave(yield_combined_plots,
-      file='output/locust_yield_plots/modeled_locust_yield_plot.pdf',
+      file='output/locust_yield_plots/ose_num.pdf',
       width=10,height=5,dpi=300)
 
 ```

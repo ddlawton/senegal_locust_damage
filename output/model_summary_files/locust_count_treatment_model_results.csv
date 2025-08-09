@@ -1,6 +1,6 @@
 term,estimate,std.error,statistic,p.value,type
-(Intercept),2.856,0.08,35.74,0,Parametric
-fertilized,-0.518,0.074,-7.021,0,Parametric
-s3,0.091,0.074,1.237,0.217,Parametric
-s(village),1,NA,0.001,0.392,Non-parametric
-s(farmer_num),1,NA,1.108,0.146,Non-parametric
+(Intercept),3.011,0.097,30.896,0,Parametric
+fertilized,-0.517,0.074,-6.937,0,Parametric
+s3,0.096,0.074,1.29,0.198,Parametric
+s(village),1,NA,0.68,0.229,Non-parametric
+s(farmer_num),1,NA,2.752,0.123,Non-parametric

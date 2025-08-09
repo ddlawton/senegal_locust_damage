@@ -1,4 +1,4 @@
 term,estimate,std.error,statistic,p.value,type
-(Intercept),6.013,0.066,91.202,0,Parametric
-s(ose_num_adj),24,NA,6.153,0,Non-parametric
-s(farmer_num),79,NA,3.98,0,Non-parametric
+(Intercept),6.013,0.066,91.121,0,Parametric
+s(ose_num),24,NA,6.003,0,Non-parametric
+s(farmer_num),79,NA,3.977,0,Non-parametric
