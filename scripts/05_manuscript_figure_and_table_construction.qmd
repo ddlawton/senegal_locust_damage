@@ -74,22 +74,23 @@ pB <- abun_mil_attack |>
     select(treatment,starts_with('abundance_')) |>
     distinct() |>
     ggplot(aes(x=treatment,y=abundance_response,color=treatment)) +
-      geom_point(size=5) +
+      geom_point(size=2.5) +
       geom_errorbar(aes(ymin=abundance_response-abundance_se,ymax=abundance_response+abundance_se),width=0) +
       scale_color_manual(values = c('black','dark green')) +
       theme_pubr()  + 
       theme(legend.position="none") +
       xlab('') +
       ylab('') +
-  theme(axis.text.x=element_blank())
+  theme(axis.text.x=element_blank()) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 20))
 
 
 pC <- all_missiom_data |>
-    select(village,treatment,att_mil_adj,survey) |>
+    select(village,treatment,att_mil,survey) |>
     mutate(treatment = factor(case_when(survey == 's1' ~ 'PT', TRUE ~ treatment),levels=c('PT','control','fertilized')),
         survey = case_when(survey == 's1' ~ 'PT',survey == 's2' ~ 'S1',survey == 's3' ~ 'S3')) |>
     drop_na(survey) |>
-    ggplot(aes(x=survey,y=att_mil_adj,color=treatment)) +
+    ggplot(aes(x=survey,y=att_mil,color=treatment)) +
         geom_point(position = position_jitterdodge(jitter.height=0,jitter.width=0.25)) +
     scale_color_manual(values = c('dark grey','black','dark green')) +
     theme_pubr()  + 
@@ -101,14 +102,15 @@ pD <- abun_mil_attack |>
     select(treatment,starts_with('att_mil_')) |>
     distinct() |>
     ggplot(aes(x=treatment,y=att_mil_response,color=treatment)) +
-      geom_point(size=5) +
+      geom_point(size=2.5) +
       geom_errorbar(aes(ymin=att_mil_response-att_mil_se,ymax=att_mil_response+att_mil_se),width=0) +
       scale_color_manual(values = c('black','dark green')) +
       theme_pubr()  + 
       theme(legend.position="none") +
       xlab('') +
       ylab('') +
-  theme(axis.text.x=element_blank())
+  theme(axis.text.x=element_blank()) + 
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 0.1))
 
 pE <- all_missiom_data |>
     select(village,treatment,yield) |>
@@ -129,13 +131,14 @@ pF <- yield |>
     group_by(treatment) |>
     mutate(reponse = mean(response),SE = mean(SE)) |>
     ggplot(aes(x=treatment,y=reponse,color=treatment)) +
-      geom_point(size=5) +
+      geom_point(size=2.5) +
       geom_errorbar(aes(ymin=reponse-SE,ymax=reponse+SE),width=0) +
       scale_color_manual(values = c('black','dark green')) +
       theme_pubr()  + 
       theme(legend.position="none") +
       xlab('') +
-      ylab('')
+      ylab('') + 
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 1000))
 
 
 
@@ -202,11 +205,11 @@ pB_opt2 <- abun_mil_attack |>
 
 
 pC_opt2 <- all_missiom_data |>
-    select(village,treatment,att_mil_adj,survey) |>
+    select(village,treatment,att_mil,survey) |>
     mutate(treatment = factor(case_when(survey == 's1' ~ 'PT', TRUE ~ treatment),levels=c('PT','control','fertilized')),
         survey = case_when(survey == 's1' ~ 'PT',survey == 's2' ~ 'S1',survey == 's3' ~ 'S3')) |>
     drop_na(survey) |>
-    ggplot(aes(x=survey,y=att_mil_adj,color=treatment)) +
+    ggplot(aes(x=survey,y=att_mil,color=treatment)) +
         geom_point(position = position_jitterdodge(jitter.height=0,jitter.width=0.25)) +
     scale_color_manual(values = c('dark grey','black','dark green')) +
     theme_pubr()  + 
@@ -305,7 +308,7 @@ plots <- list(
   
   "scatter_treatment_att_mil" = dat |>
     filter(survey != 's1') |>
-    ggplot(aes(x = treatment, y = att_mil_adj)) +
+    ggplot(aes(x = treatment, y = att_mil)) +
     geom_jitter(width = 0.2, height = 0) +
     labs(x = "treatment", y = "locust damage") +
     theme_pubr(),
@@ -319,7 +322,7 @@ plots <- list(
 
   "scatter_ose_num_att_mil" = dat |>
     filter(survey != 's1') |>
-    ggplot(aes(x = ose_num, y = att_mil_adj)) +
+    ggplot(aes(x = ose_num, y = att_mil)) +
     geom_point() +
     geom_smooth(method = "lm") +
     labs(y = "locust damage") +
@@ -358,7 +361,7 @@ plots <- list(
 
   "scatter_att_mil_survey_village" = dat |>
     filter(survey != 's4') |>
-    ggplot(aes(y = att_mil_adj, x = survey, color = village)) +
+    ggplot(aes(y = att_mil, x = survey, color = village)) +
     geom_jitter(width = 0.3, height = 0) +
     MetBrewer::scale_color_met_d(name = "Degas") +
     labs(x = "survey", y = "locust damage", color = "village") +
