@@ -84,7 +84,7 @@ raw_ose_count_yield_correlation <- yield_locust_dat |>
 # locust abundance and attack correlation
 
 ose_count_damage_correlation <- yield_locust_dat |>
-  ggplot(aes(x=ose_num_adj,y=att_mil_adj,color=treatment)) +
+  ggplot(aes(x=ose_num_adj,y=att_mil,color=treatment)) +
     geom_point() +
     theme_pubr() +
     scale_color_met_d(name='Degas')  +
@@ -258,6 +258,93 @@ ggsave(yield_combined_plots,
       width=10,height=5,dpi=300)
 
 ```
+
+### GAMs yield x locust: treatments separately
+
+```{r}
+control <- yield_locust_dat |>
+    ungroup() |>
+    filter(treatment == 'control') |>
+    select(farmer_num,village,yield,ose_num_adj,survey,treatment) |>
+    mutate(across(c(farmer_num, survey,village), as.factor))
+
+
+fertilizer <- yield_locust_dat |>
+    ungroup() |>
+    filter(treatment == 'fertilized') |>
+    select(farmer_num,village,yield,ose_num_adj,survey,treatment) |>
+    mutate(across(c(farmer_num, survey,village), as.factor))
+
+
+```
+
+lets make basic GAMs as the data appears non-linear
+
+```{r}
+library(mgcv)
+library(glmmTMB)
+
+control_mod <- gam(yield ~ 
+    ose_num_adj +
+    s(survey,bs='re'),
+    #s(farmer_num,bs='re'),
+    data = control,
+    select=TRUE)
+
+fert_mod <- gam(yield ~ 
+    ose_num_adj +
+    s(survey,bs='re'),
+    #s(farmer_num,bs='re'),
+    data = fertilizer,
+    select=TRUE)
+
+
+gratia::draw(mod)
+summary(control_mod)
+summary(fert_mod)
+
+
+```
+
+```{r}
+
+
+cor_df <- yield_locust_dat %>%
+  group_by(treatment) %>%
+  summarise(
+    cor = cor(yield, ose_num_adj, method = "pearson", use = "complete.obs"),
+    .groups = "drop"
+  )
+
+cor_df <- cor_df %>%
+  mutate(
+    label = paste0("r = ", round(cor, 3)),
+    ose_num_adj = Inf,
+    yield = Inf
+  )
+
+
+
+basic_yield_location_cor_plot <- yield_locust_dat |>
+  ggplot(aes(x = ose_num_adj, y = yield)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE,size=1.25) +
+  facet_wrap(~treatment, scales = "free") +
+  geom_text(
+    data = cor_df,
+    aes(x = ose_num_adj, y = yield, label = label), 
+    inherit.aes = FALSE,
+    hjust = 1.1,
+    vjust = 1.1
+  ) +
+  theme_pubr(base_size=10) +
+  xlab(bquote("locust count" ~ (individuals %*% 100 ~ m^-2)))
+
+ggsave(basic_yield_location_cor_plot,file = here('output/locust_yield_plots/basic_locust_yield_correlations.png'),
+width=8,height=8)
+
+```
+
 
 ## locust count to temperature
 

@@ -61,33 +61,33 @@ dat <- read_csv('data/analysis_ready_data.csv') |>
 # List of plots with their respective file paths
 plot_list <- list(
   raw_ose_count_treatment = dat |>
-    select(village,farmer_num,treatment,ose_num) |>
+    select(village,farmer_num,treatment,ose_num_adj) |>
     distinct() |>
-    ggplot(aes(x = treatment, y = ose_num)) +
+    ggplot(aes(x = treatment, y = ose_num_adj)) +
     geom_jitter(width = 0.2) +
     ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr(),
   
   raw_ose_count_humidity_percent = dat |>
-    select(village,farmer_num,treatment,ose_num,humidity_percent) |>
+    select(village,farmer_num,treatment,ose_num_adj,humidity_percent) |>
     distinct() |>
-    ggplot(aes(x = humidity_percent, y = ose_num)) +
+    ggplot(aes(x = humidity_percent, y = ose_num_adj)) +
     geom_jitter(width = 0.2) +
     ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr(),
   
   raw_ose_count_ground_cover_percent = dat |>
-    select(village,farmer_num,treatment,ose_num,ground_cover_percent) |>
+    select(village,farmer_num,treatment,ose_num_adj,ground_cover_percent) |>
     distinct() |>
-    ggplot(aes(x = ground_cover_percent, y = ose_num)) +
+    ggplot(aes(x = ground_cover_percent, y = ose_num_adj)) +
     geom_jitter(width = 0.2) +
     ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr(),
   
   raw_ose_count_hour = dat |>
-    select(village,farmer_num,treatment,ose_num,hour) |>
+    select(village,farmer_num,treatment,ose_num_adj,hour) |>
     distinct() |>
-    ggplot(aes(x = hour, y = ose_num)) +
+    ggplot(aes(x = hour, y = ose_num_adj)) +
     geom_jitter(width = 0.2) +
     ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
     theme_pubr(),
@@ -155,9 +155,9 @@ So the pattern isnt as strong as yield, but I think there is still something the
 # Broken out into village and farmer
 
 ose_number_village_treatment <- dat  |>
-  select(village,farmer_num,treatment,ose_num) |>
+  select(village,farmer_num,treatment,ose_num_adj) |>
   distinct() |>
-  ggplot(aes(x=treatment,y=ose_num,color=village)) +
+  ggplot(aes(x=treatment,y=ose_num_adj,color=village)) +
     geom_jitter(width=0.2) +
     scale_color_met_d(name='Demuth') +
     ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^2))) +
@@ -166,10 +166,10 @@ ose_number_village_treatment <- dat  |>
 
 ose_number_village_survey <- dat |>
   filter(survey != 's1') |>
-  select(village,survey,farmer_num,treatment,ose_num) |>
+  select(village,survey,farmer_num,treatment,ose_num_adj) |>
   distinct() |>
   drop_na() |>
-  ggplot(aes(x=treatment,y=ose_num,color=village,group=farmer_num)) +
+  ggplot(aes(x=treatment,y=ose_num_adj,color=village,group=farmer_num)) +
     geom_line(alpha=0.5) +
     geom_point(size=2) +
     scale_color_met_d(name='Demuth') +
@@ -181,10 +181,10 @@ ose_number_village_survey <- dat |>
 # What about across survey?
 
 ose_number_treatment_village_survey <- dat |>
-  select(village,survey,farmer_num,treatment,ose_num) |>
+  select(village,survey,farmer_num,treatment,ose_num_adj) |>
   distinct() |>
   drop_na() |>
-  ggplot(aes(x=survey,y=ose_num,color=village,group=farmer_num)) +
+  ggplot(aes(x=survey,y=ose_num_adj,color=village,group=farmer_num)) +
     geom_line(alpha=0.5) +
     geom_point(size=2) +
     scale_color_met_d(name='Demuth') +
@@ -227,23 +227,23 @@ s1_exclude <- dat |>
   filter(survey != 's1')
 
 
-ose_num_mod0 <- gam(ose_num ~ 1,
+ose_num_mod0 <- gam(ose_num_adj ~ 1,
             data=s1_exclude,family = tw()) # null model
 
-ose_num_mod1 <- gam(ose_num ~ treatment,
+ose_num_mod1 <- gam(ose_num_adj ~ treatment,
             data=s1_exclude,family = tw()) # basic ANOVA
 
-ose_num_mod2 <- gam(ose_num ~ treatment + 
+ose_num_mod2 <- gam(ose_num_adj ~ treatment + 
               s(survey,bs='re') +
               s(village,bs='re'),
             data=s1_exclude,family = tw())
 
-ose_num_mod3 <- gam(ose_num ~ treatment +
+ose_num_mod3 <- gam(ose_num_adj ~ treatment +
               s(survey,bs='re') +
               s(farmer_num,bs='re'),
             data=s1_exclude,family = tw())
 
-ose_num_mod4 <- gam(ose_num ~ treatment + 
+ose_num_mod4 <- gam(ose_num_adj ~ treatment + 
               survey +
               s(village,bs='re') + 
               s(farmer_num,bs='re'),
@@ -437,7 +437,7 @@ summary(att_mil_mod4)
 ```{r}
 
 locust_dat <- dat |>
-  select(farmer_num,village,treatment,ose_num,att_mil,survey) |>
+  select(farmer_num,village,treatment,ose_num_adj,att_mil,survey) |>
   left_join(ose_num_emms,by='treatment') |>
   rename(abundance_response = response,abundance_se = SE,abundance_df = df, abundance_lower.CL = lower.CL, abundance_upper.CL = upper.CL) |>
   left_join(att_mil_emms,by='treatment') |>
