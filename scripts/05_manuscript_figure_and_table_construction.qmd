@@ -426,3 +426,68 @@ ggsave(
 )
 
 ```
+
+
+## Supplementary Figure 4: locust count and % of green vegetation ground cover.
+
+
+```{r}
+cover_locust <- dat |>
+  select(farmer_num,treatment,survey,ground_cover_percent,ose_num_adj) |>
+  drop_na(ground_cover_percent,ose_num_adj) |>
+  mutate(farmer_num = factor(farmer_num))
+
+gc_basic_mod <- gam(
+  ose_num_adj ~ 
+    ground_cover_percent,
+  data = cover_locust,
+  select=TRUE
+)
+
+gc_mod <- gam(
+  ose_num_adj ~ 
+    ground_cover_percent +
+    s(treatment,bs='re') +
+    s(farmer_num,bs='re'),
+  data = cover_locust,
+  select=TRUE
+)
+
+summary(gc_mod)
+summary(gc_basic_mod)
+
+gratia::draw(gc_mod)
+```
+
+## Supplementary Figure 5: locust count and humidity
+
+
+```{r}
+humidity_locust <- dat |>
+  select(farmer_num,treatment,survey,humidity_percent,ose_num_adj) |>
+  drop_na(humidity_percent,ose_num_adj) |>
+  mutate(farmer_num = factor(farmer_num))
+
+
+humid_basic_mod <- gam(
+  ose_num_adj ~ 
+    humidity_percent,
+  data = humidity_locust,
+  select=TRUE
+)
+
+
+humid_mod <- gam(
+  ose_num_adj ~ 
+    humidity_percent +
+    s(treatment,bs='re') +
+    s(farmer_num,bs='re'),
+  data = humidity_locust,
+  select=TRUE
+)
+
+summary(humid_basic_mod)
+summary(humid_mod)
+
+gratia::draw(gc_mod)
+```
