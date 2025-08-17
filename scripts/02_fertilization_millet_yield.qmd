@@ -46,6 +46,15 @@ here::i_am('README.md')
 dat <- read_csv('data/analysis_ready_data.csv')
 dat_wo_s1 <- dat |> filter(survey != 's1')
 
+
+dat_s3 <- dat |> 
+    filter(survey %in% c('s3','s4')) |>
+    group_by(village,farmer_num,treatment) |>
+    fill(yield,.direction='updown') |>
+    filter(survey == 's4')
+
+
+
 ```
 
 This should be self explanatory, but lets see what the data looks like.

@@ -163,7 +163,7 @@ yield_locust_mod2 <- gam(yield ~
   data=yield_locust_dat,family=tw())
 
 yield_locust_mod3 <- gam(yield ~ 
-    s(ose_num,k=25) + 
+    s(ose_num_adj,k=25) + 
     s(farmer_num,bs=c('re')) + 
     s(treatment,bs=c('re')),
   select=TRUE,
@@ -186,6 +186,63 @@ draw(yield_locust_mod3)
 
 
 ```
+
+
+
+### modeling yield x locust count control plots only
+
+I am going to now model yield
+
+
+```{r locust abundance/attack and yield modeling}
+
+control_dat <- yield_locust_dat |>
+    filter(treatment != 'control') |> 
+    drop_na(ose_num_adj,yield)  |>
+  mutate(survey = factor(survey),
+    survey = factor(survey),
+    village = factor(village),
+    farmer_num = factor(farmer_num))
+
+control_dat
+
+
+control_dat |>
+  ggplot(aes(x=ose_num_adj,y=yield)) +
+    geom_point() +
+    geom_smooth(method = 'lm')
+
+
+control_mod0 <- gam(yield ~ 1,data=control_dat,family=tw())
+
+control_mod1 <- lm(yield ~ 
+    ose_num_adj,
+  data=control_dat)
+
+control_mod2 <- gam(yield ~ 
+    ose_num_adj + 
+    s(survey,bs=c('re')),
+  select=TRUE,
+  data=control_dat)
+
+
+
+# AIC model selection criteria 
+
+AIC(control_mod0,control_mod1,control_mod2) |>
+  as_tibble(rownames = 'model') |>
+  mutate(deltaAIC = AIC - min(AIC))
+
+# model fit diagnostics 
+
+appraise(control_mod2)
+
+summary(control_mod2)
+draw(control_mod2)
+
+
+```
+
 
 
 ### saving model summary to csv

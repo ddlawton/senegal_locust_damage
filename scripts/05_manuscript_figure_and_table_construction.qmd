@@ -165,7 +165,6 @@ ggsave(manuscript_figure,file=here('output/panel_1.pdf'),width=8,height=8)
 
 ## option 2: both model and raw data at the same scale
 
-# yield, attack, and abundance panel
  - panel a = raw locust count through survey
  - panel b = modeled locust count through survey
  - panel c = raw locust damage through survey
@@ -283,6 +282,8 @@ ggsave(manuscript_figure_opt2,file=here('output/panel_1_opt2.png'),width=8,heigh
  ```
 
 
+#
+
 # supplementary figures
 
 
@@ -295,7 +296,7 @@ I am going to save those plots out int `output/raw_visualization`
 
 # Define directory
 output_dir <- here("output", "raw_visualization")
-
+dat <- all_missiom_data
 # Create plots with better axis labels
 plots <- list(
   "scatter_treatment_ose_num" = dat |>
@@ -435,7 +436,8 @@ ggsave(
 cover_locust <- dat |>
   select(farmer_num,treatment,survey,ground_cover_percent,ose_num_adj) |>
   drop_na(ground_cover_percent,ose_num_adj) |>
-  mutate(farmer_num = factor(farmer_num))
+  mutate(farmer_num = factor(farmer_num),
+    treatment = factor(treatment))
 
 gc_basic_mod <- gam(
   ose_num_adj ~ 
@@ -466,7 +468,8 @@ gratia::draw(gc_mod)
 humidity_locust <- dat |>
   select(farmer_num,treatment,survey,humidity_percent,ose_num_adj) |>
   drop_na(humidity_percent,ose_num_adj) |>
-  mutate(farmer_num = factor(farmer_num))
+  mutate(farmer_num = factor(farmer_num),
+    treatment = factor(treatment))
 
 
 humid_basic_mod <- gam(
@@ -490,4 +493,93 @@ summary(humid_basic_mod)
 summary(humid_mod)
 
 gratia::draw(gc_mod)
+```
+
+
+
+## Supplementary Figure 5: locust count and humidity
+
+
+```{r}
+humidity_locust <- dat |>
+  select(farmer_num,treatment,survey,humidity_percent,ose_num_adj) |>
+  drop_na(humidity_percent,ose_num_adj) |>
+  mutate(farmer_num = factor(farmer_num), treatment = factor(treatment))
+
+
+humid_basic_mod <- gam(
+  ose_num_adj ~ 
+    humidity_percent,
+  data = humidity_locust,
+  select=TRUE
+)
+
+
+humid_mod <- gam(
+  ose_num_adj ~ 
+    humidity_percent +
+    s(treatment,bs='re') +
+    s(farmer_num,bs='re'),
+  data = humidity_locust,
+  select=TRUE
+)
+
+summary(humid_basic_mod)
+summary(humid_mod)
+
+gratia::draw(gc_mod)
+```
+
+## Supplementary Figure 6: locust count and temperature
+
+
+```{r}
+temp_locust <- dat |>
+  select(farmer_num,treatment,survey,temp_c,ose_num_adj) |>
+  drop_na(temp_c,ose_num_adj) |>
+  mutate(farmer_num = factor(farmer_num), treatment = factor(treatment))
+
+
+temp_basic_mod <- gam(
+  ose_num_adj ~ 
+    temp_c,
+  data = temp_locust,
+  select=TRUE
+)
+
+
+temp_mod <- gam(
+  ose_num_adj ~ 
+    temp_c +
+    s(treatment,bs='re') +
+    s(farmer_num,bs='re'),
+  data = temp_locust,
+  select=TRUE
+)
+
+summary(temp_basic_mod)
+summary(temp_mod)
+
+gratia::draw(temp_mod)
+```
+
+
+```{r}
+
+
+library(dplyr)
+library(ggplot2)
+
+temp_locust_plot <- temp_locust |>
+    mutate(pred = predict(temp_mod, type = "response")) |>
+    ggplot(aes(x=temp_c,y=ose_num_adj)) +
+    geom_point(size=0.8) +
+    geom_smooth(aes(y=pred),method='lm',se=FALSE) +
+    ggpubr::theme_pubr() +
+    xlab('temperature (c)') +
+    ylab(bquote("locust count" ~ (individuals %*% 100 ~ m^-2)))
+
+
+ggsave(temp_locust_plot,file=here('output/temperatue_locust.pdf'))
+
 ```
