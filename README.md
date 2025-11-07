@@ -1,5 +1,7 @@
 # Senegal Locust Damage Analysis
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17547461.svg)](https://doi.org/10.5281/zenodo.17547461)
+
 This repository contains data and code for the manuscript "Evidence that community-based soil amendments suppress migratory pests and increase yield". The workflows here support the analyses and figures presented in the paper and provide reproducibility for other interested researchers.
 
 ## Authors
